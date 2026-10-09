@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="sl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="description" content="DNO IDP HUB – skupna aplikacija za spremljanje individualnega razvoja igralk."/>
+<title>DNO IDP HUB</title>
+<style>
+:root{--bg:#f7f5fb;--card:#fff;--ink:#241d30;--muted:#756c82;--line:#e8e1ef;--p:#7040bd;--pk:#cf55a0;--ok:#2f8a64;--warn:#b8791f;--shadow:0 12px 30px rgba(55,35,88,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 18px;background:rgba(247,245,251,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.logo{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;color:#fff;font-weight:900;background:linear-gradient(135deg,var(--p),var(--pk))}
+.brand{min-width:210px}.brand b{display:block}.brand small{color:var(--muted)}
+nav{display:flex;gap:5px;flex:1;overflow:auto}nav button{border:0;background:transparent;padding:9px 11px;border-radius:11px;color:var(--muted);font-weight:800;white-space:nowrap}nav button.on,nav button:hover{background:#eee8f7;color:var(--p)}
+.user{display:flex;align-items:center;gap:8px;white-space:nowrap}.user small{color:var(--muted)}.btn{border:1px solid var(--line);background:#fff;padding:9px 12px;border-radius:11px;font-weight:800}.btn.primary{border:0;color:#fff;background:linear-gradient(135deg,var(--p),var(--pk))}.btn.danger{color:#a33b47}
+main{max-width:1400px;margin:auto;padding:22px 18px 60px}.hidden{display:none!important}.hero{padding:28px;border-radius:25px;color:#fff;background:linear-gradient(125deg,#4e2a87,#7444bd 55%,#c6539e);box-shadow:var(--shadow);margin-bottom:18px}.hero h1{margin:0 0 7px;font-size:30px}.hero p{margin:0;opacity:.88}
+.grid{display:grid;gap:14px}.g4{grid-template-columns:repeat(4,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:17px;box-shadow:var(--shadow)}.card h3{margin:0 0 10px;font-size:15px}.card h4{margin:0 0 5px}.muted{color:var(--muted)}.small{font-size:11px}.tiny{font-size:9.5px}.click{cursor:pointer}.click:hover{border-color:#cebde5;transform:translateY(-1px)}
+.kpi b{font-size:25px;display:block}.kpi span{font-size:10px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:10px;font-weight:800;background:#efe9f8;color:#6944a0;border-radius:99px;padding:5px 8px}
+.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.wrap{flex-wrap:wrap}.grow{flex:1}.avatar{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#efe9f8;color:var(--p);font-weight:900}
+.list{display:flex;flex-direction:column;gap:8px}.item{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:13px;padding:10px;background:#fff}.item:hover{border-color:#d5c6e8}
+.score{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:900}.s0{background:#fae7e9;color:#b54f59}.s1{background:#fff2da;color:#9d691a}.s2{background:#e6f4ed;color:#287553}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}.head h2{margin:0 0 4px;font-size:27px}.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+input,select,textarea{border:1px solid var(--line);border-radius:11px;background:#fff;padding:10px 11px;color:var(--ink)}textarea{min-height:92px;resize:vertical}.search{min-width:240px}.field label{display:block;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.45px;margin-bottom:5px}.form{display:grid;grid-template-columns:1fr 1fr;gap:11px}.full{grid-column:1/-1}
+table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{overflow:auto}th{background:#f3eef9;text-align:left;color:#62536f}th,td{padding:9px;border-bottom:1px solid var(--line);vertical-align:top}
+.modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(30,20,42,.45)}.modal.on{display:flex}.modalbox{width:min(850px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;padding:19px}.modalbox h3{margin-top:0}.x{border:0;background:#f2edf7;border-radius:9px;width:34px;height:34px}
+.auth{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at top right,#eadcf4,transparent 35%),var(--bg)}.authbox{width:min(470px,100%);background:#fff;border:1px solid var(--line);border-radius:25px;padding:25px;box-shadow:var(--shadow)}.authbox h1{margin:0 0 5px}.authbox p{color:var(--muted);font-size:12px;line-height:1.5}.authbox input{width:100%;margin:6px 0}.msg{padding:11px 12px;border-radius:11px;background:#f2edf8;color:#614b7f;font-size:11px;margin-top:10px;white-space:pre-wrap}.bad{background:#fae8ea;color:#9a3b45}.ok{background:#e9f6ef;color:#2d7859}
+.tabs{display:flex;gap:6px;overflow:auto;margin-bottom:12px}.tabs button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;font-weight:800;color:var(--muted);white-space:nowrap}.tabs button.on{background:#eee8f7;color:var(--p)}
+.audit{font-size:9.5px;color:var(--muted);margin-top:4px}.edit{border:0;background:#f0eaf7;color:var(--p);width:29px;height:29px;border-radius:9px;font-weight:900}.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.flow span{padding:7px 9px;border:1px solid #ded2ec;background:#f5f1fa;border-radius:9px;font-size:11px;font-weight:800}
+.weekgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.week{padding:11px;border:1px solid var(--line);border-radius:13px;background:#fcfbfe}.week b{display:block;color:var(--p);font-size:10px;margin-bottom:5px}
+.daygrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.day{border:1px solid var(--line);border-radius:13px;overflow:hidden}.day header{background:#f3eef9;padding:9px;font-size:11px;font-weight:900}.day .body{padding:8px}.mini{border:1px solid var(--line);padding:8px;border-radius:10px;margin-bottom:6px}
+@media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3,.g2{grid-template-columns:1fr}.weekgrid{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){.top{flex-wrap:wrap;padding:10px}.brand{flex:1}.user{font-size:10px}.user small{display:none}nav{order:3;width:100%}main{padding:15px 11px 45px}.g4{grid-template-columns:1fr}.head{align-items:flex-start;flex-direction:column}.form{grid-template-columns:1fr}.full{grid-column:auto}.daygrid,.weekgrid{grid-template-columns:1fr}.search{min-width:0;width:100%}}
+</style>
+</head>
+<body>
+<section id="authScreen" class="auth">
+  <div class="authbox">
+    <div class="row"><div class="logo">IDP</div><div><h1>DNO IDP HUB</h1><div class="small muted">Skupna baza za trenerke</div></div></div>
+    <p>Prijavi se s svojim računom. Prva registrirana uporabnica postane administrator; naslednje uporabnice administrator odobri in jim določi vlogo.</p>
+    <div class="tabs"><button id="loginTab" class="on">Prijava</button><button id="signupTab">Registracija</button></div>
+    <div id="signupName" class="hidden"><input id="fullName" placeholder="Ime in priimek"></div>
+    <input id="email" type="email" placeholder="E-pošta">
+    <input id="password" type="password" placeholder="Geslo (najmanj 6 znakov)">
+    <button id="authBtn" class="btn primary" style="width:100%;margin-top:8px">Prijava</button>
+    <div id="authMsg"></div>
+  </div>
+</section>
+
+<div id="app" class="hidden">
+<header class="top">
+  <div class="logo">IDP</div>
+  <div class="brand"><b>DNO IDP HUB</b><small>Individualni razvoj • spremljanje • trening</small></div>
+  <nav id="nav">
+    <button data-view="dashboard" class="on">Domov</button>
+    <button data-view="players">Igralke</button>
+    <button data-view="trainings">Treningi</button>
+    <button data-view="tracking">Mesečno spremljanje</button>
+    <button data-view="reviews">Mesečni review</button>
+    <button data-view="audit">Spremembe</button>
+    <button data-view="users" id="usersNav" class="hidden">Uporabnice</button>
+  </nav>
+  <div class="user"><div><b id="userName"></b><small id="userRole"></small></div><button id="refreshBtn" class="btn">↻</button><button id="logoutBtn" class="btn">Odjava</button></div>
+</header>
+<main id="content"></main>
+</div>
+
+<div class="modal" id="playerModal"><div class="modalbox">
+  <div class="row between"><h3 id="playerModalTitle">Igralka</h3><button class="x" data-close>×</button></div>
+  <form id="playerForm" class="form">
+    <input type="hidden" name="id">
+    <div class="field"><label>Ime in priimek</label><input name="full_name" required></div>
+    <div class="field"><label>Klub</label><select name="club_id"></select></div>
+    <div class="field full"><label>Glavni IDP fokus</label><textarea name="current_focus"></textarea></div>
+    <div class="field full"><label>Naslednji mikro fokus</label><textarea name="next_micro_focus"></textarea></div>
+    <div class="field full"><label>Coaching cue</label><textarea name="coaching_cue"></textarea></div>
+    <div class="field"><label>Primarne skupine (A,B,C...)</label><input name="primary_groups"></div>
+    <div class="field"><label>Sekundarne skupine</label><input name="secondary_groups"></div>
+    <div class="field full"><label>Prednosti / izhodišče</label><textarea name="strengths"></textarea></div>
+    <div class="field full"><label>Razvojna rezerva</label><textarea name="development_reserve"></textarea></div>
+    <div class="field"><label>Teden 1</label><textarea name="w1"></textarea></div><div class="field"><label>Teden 2</label><textarea name="w2"></textarea></div>
+    <div class="field"><label>Teden 3</label><textarea name="w3"></textarea></div><div class="field"><label>Teden 4</label><textarea name="w4"></textarea></div>
+    <div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary">Shrani</button></div>
+  </form>
+</div></div>
+
+<div class="modal" id="trainingModal"><div class="modalbox">
+  <div class="row between"><h3>Trening</h3><button class="x" data-close>×</button></div>
+  <form id="trainingForm" class="form">
+    <input type="hidden" name="id">
+    <div class="field"><label>Datum</label><input name="training_date" type="date" required></div>
+    <div class="field"><label>Dan</label><select name="day_name"><option>Ponedeljek</option><option>Torek</option><option>Sreda</option><option>Četrtek</option><option>Petek</option></select></div>
+    <div class="field full"><label>Glavna vsebina</label><input name="title" required></div>
+    <div class="field"><label>Namen</label><input name="purpose"></div><div class="field"><label>Metoda</label><input name="method"></div>
+    <div class="field full"><label>IDP področja (A,B,C...)</label><input name="idp_areas"></div>
+    <div class="field full"><label>Vsebina / vaje / opombe</label><textarea name="notes"></textarea></div>
+    <div class="field"><label>Video / Drive povezava</label><input name="video_url"></div><div class="field"><label>Druga povezava</label><input name="document_url"></div>
+    <div class="field full"><label>Word datoteka treninga (.doc/.docx)</label><input id="wordFile" type="file" accept=".doc,.docx"></div>
+    <div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary">Shrani</button></div>
+  </form>
+</div></div>
+
+<div class="modal" id="obsModal"><div class="modalbox">
+  <div class="row between"><h3>IDP opažanje</h3><button class="x" data-close>×</button></div>
+  <form id="obsForm" class="form">
+    <input type="hidden" name="id"><input type="hidden" name="training_id">
+    <div class="field"><label>Igralka</label><select name="player_id"></select></div><div class="field"><label>IDP skupina</label><select name="idp_group"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></div>
+    <div class="field full"><label>Glavni fokus</label><input name="focus" required></div><div class="field full"><label>Vedenje, ki ga opazujem</label><input name="behavior" required></div>
+    <div class="field"><label>Ocena 0–2</label><select name="score"><option value="0">0 – ni vidno</option><option value="1" selected>1 – delno / ob usmerjanju</option><option value="2">2 – samostojno</option></select></div>
+    <div class="field"><label>Feedback</label><select name="feedback_given"><option value="false">NE</option><option value="true">DA</option></select></div>
+    <div class="field full"><label>Kratka opomba</label><textarea name="note"></textarea></div><div class="field full"><label>Naslednji mikro fokus</label><input name="next_micro_focus"></div>
+    <div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary">Shrani</button></div>
+  </form>
+</div></div>
+
+<div class="modal" id="recordModal"><div class="modalbox">
+<div class="row between"><h3>Nov zapis</h3><button class="x" data-close>×</button></div>
+<form id="recordForm" class="form"><input type="hidden" name="id"><input type="hidden" name="player_id">
+<div class="field"><label>Datum</label><input type="date" name="record_date"></div><div class="field"><label>Vrsta</label><select name="record_type"><option>Trenerska opomba</option><option>Feedback igralke</option><option>Video situacija</option><option>Mikro fokus</option><option>Sestanek / pogovor</option><option>Klubski feedback</option></select></div>
+<div class="field full"><label>Naslov</label><input name="title"></div><div class="field full"><label>Zapis</label><textarea name="body" required></textarea></div><div class="field full"><label>Mikro fokus</label><input name="micro_focus"></div>
+<div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary">Shrani</button></div></form>
+</div></div>
+
+<div class="modal" id="reviewModal"><div class="modalbox">
+<div class="row between"><h3>Mesečni review</h3><button class="x" data-close>×</button></div>
+<form id="reviewForm" class="form"><input type="hidden" name="id">
+<div class="field"><label>Igralka</label><select name="player_id"></select></div><div class="field"><label>Mesec</label><input type="month" name="month"></div>
+<div class="field full"><label>Kaj je napredovalo</label><textarea name="progress"></textarea></div><div class="field full"><label>Kaj ostaja</label><textarea name="remaining"></textarea></div>
+<div class="field full"><label>Dokaz / primer iz igre</label><textarea name="evidence"></textarea></div><div class="field full"><label>Naslednji 4-tedenski cilj</label><textarea name="next_four_week_goal"></textarea></div>
+<div class="field full"><label>Feedback igralke</label><textarea name="player_feedback" placeholder="še ni prejet"></textarea></div>
+<div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary">Shrani</button></div></form>
+</div></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const SB_URL='https://chkzewdrkzjmblbrzkyy.supabase.co';
+const SB_KEY='sb_publishable_G2bhNT5Z0F2y7KaHfuvk0Q_yX0YH6Ch';
+const sb=createClient(SB_URL,SB_KEY);
+let signup=false, session=null, me=null, data={clubs:[],profiles:[],players:[],trainings:[],documents:[],observations:[],reviews:[],records:[],audit:[]};
+let view='dashboard', selectedPlayer=null, selectedTraining=null;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const dsl=s=>s?new Date(s+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('sl-SI'):'';
+const ts=s=>s?new Date(s).toLocaleString('sl-SI',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+const monthName=s=>{if(!s)return'';let d=new Date(s.slice(0,7)+'-01T12:00:00');return d.toLocaleDateString('sl-SI',{month:'long',year:'numeric'})};
+const club=id=>data.clubs.find(x=>x.id===id);
+const prof=id=>data.profiles.find(x=>x.id===id);
+const player=id=>data.players.find(x=>x.id===id);
+const tr=id=>data.trainings.find(x=>x.id===id);
+const initials=n=>(n||'?').split(' ').map(x=>x[0]).slice(0,2).join('');
+const chips=a=>(a||[]).map(x=>'<span class="chip">'+esc(x)+'</span>').join('');
+const score=n=>'<span class="score s'+n+'">'+n+'</span>';
+const audit=o=>{let p=prof(o?.updated_by||o?.created_by);return '<div class="audit">Zadnje uredila: <b>'+esc(p?.full_name||'Začetni vnos')+'</b>'+(o?.updated_at?' · '+ts(o.updated_at):'')+'</div>'};
+const canInternal=()=>['admin','dno_coach'].includes(me?.role);
+const canObserve=()=>['admin','dno_coach','club_coach'].includes(me?.role);
+function openM(id){$('#'+id).classList.add('on')} function closeM(el){el.closest('.modal').classList.remove('on')}
+function roleLabel(r){return ({admin:'Administrator',dno_coach:'DNO trenerka',club_coach:'Klubska trenerka',analyst:'Analitik/analitičarka',player:'Igralka',pending:'Čaka na odobritev'})[r]||r}
+
+$('#loginTab').onclick=()=>setAuthMode(false); $('#signupTab').onclick=()=>setAuthMode(true);
+function setAuthMode(v){signup=v;$('#loginTab').classList.toggle('on',!v);$('#signupTab').classList.toggle('on',v);$('#signupName').classList.toggle('hidden',!v);$('#authBtn').textContent=v?'Registracija':'Prijava';$('#authMsg').innerHTML=''}
+$('#authBtn').onclick=async()=>{
+  const email=$('#email').value.trim(),password=$('#password').value,name=$('#fullName').value.trim(); $('#authMsg').innerHTML='';
+  try{
+    if(signup){
+      if(!name)throw new Error('Vpiši ime in priimek.');
+      const {data:r,error}=await sb.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:location.href}}); if(error)throw error;
+      if(r.session){await boot(r.session)}else $('#authMsg').innerHTML='<div class="msg ok">Registracija je uspela. Preveri e-pošto in potrdi račun. Če te potrditvena povezava preusmeri drugam, se nato samo vrni na to stran in se prijavi.</div>';
+    }else{
+      const {data:r,error}=await sb.auth.signInWithPassword({email,password}); if(error)throw error; await boot(r.session);
+    }
+  }catch(e){$('#authMsg').innerHTML='<div class="msg bad">'+esc(e.message)+'</div>'}
+};
+$('#logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};
+$('#refreshBtn').onclick=()=>loadAll(true);
+$$('[data-close]').forEach(b=>b.onclick=()=>closeM(b));
+$('#nav').onclick=e=>{let b=e.target.closest('[data-view]');if(!b)return;view=b.dataset.view;selectedPlayer=null;selectedTraining=null;render()};
+window.addEventListener('focus',()=>{if(session&&me?.role!=='pending')loadAll(false)});
+
+async function boot(s){
+  session=s; if(!s)return;
+  let tries=0;
+  while(tries++<5){
+    const {data:p}=await sb.from('profiles').select('*').eq('id',s.user.id).maybeSingle();
+    if(p){me=p;break} await new Promise(r=>setTimeout(r,350));
+  }
+  if(!me){$('#authMsg').innerHTML='<div class="msg bad">Profil uporabnice še ni pripravljen. Osveži stran čez nekaj sekund.</div>';return}
+  if(me.role==='pending'){
+    $('#authScreen').innerHTML='<div class="authbox"><div class="row"><div class="logo">IDP</div><div><h1>DNO IDP HUB</h1><div class="small muted">'+esc(me.full_name)+'</div></div></div><div class="msg">Tvoj račun je ustvarjen in čaka na odobritev administratorja. Ko ti določi vlogo, se ponovno prijavi.</div><button class="btn" id="pendingLogout" style="width:100%;margin-top:12px">Odjava</button></div>';
+    $('#pendingLogout').onclick=async()=>{await sb.auth.signOut();location.reload()};return;
+  }
+  $('#authScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#userName').textContent=me.full_name||me.email;$('#userRole').textContent=roleLabel(me.role);$('#usersNav').classList.toggle('hidden',me.role!=='admin');
+  await loadAll(true);
+}
+async function loadAll(show=true){
+  if(show)$('#content').innerHTML='<div class="card">Nalagam podatke …</div>';
+  const common=[
+    sb.from('clubs').select('*').order('name'),
+    sb.from('players').select('*').eq('active',true).order('full_name'),
+    sb.from('trainings').select('*').order('training_date',{ascending:false}),
+    sb.from('observations').select('*').order('created_at',{ascending:false}),
+    sb.from('monthly_reviews').select('*').order('month',{ascending:false}),
+    sb.from('player_records').select('*').order('record_date',{ascending:false}),
+    sb.from('profiles').select('*').order('full_name')
+  ];
+  const res=await Promise.all(common);
+  const keys=['clubs','players','trainings','observations','reviews','records','profiles']; keys.forEach((k,i)=>data[k]=res[i].data||[]);
+  if(canInternal()){const a=await sb.from('audit_log').select('*').order('changed_at',{ascending:false}).limit(100);data.audit=a.data||[];const docs=await sb.from('training_documents').select('*').order('created_at',{ascending:false});data.documents=docs.data||[]}
+  render();
+}
+function navOn(v){$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v))}
+function render(){navOn(view); if(selectedPlayer)return renderPlayer(selectedPlayer);if(selectedTraining)return renderTraining(selectedTraining);({dashboard:renderDash,players:renderPlayers,trainings:renderTrainings,tracking:renderTracking,reviews:renderReviews,audit:renderAudit,users:renderUsers}[view]||renderDash)()}
+function setContent(h){$('#content').innerHTML=h}
+
+function renderDash(){
+  let obs=data.observations.slice(0,6);
+  setContent('<div class="hero"><h1>En sistem za celoten IDP proces.</h1><p>Igralka ↔ trening ↔ opažanje ↔ mesečni review ↔ naslednji fokus. Vsi pooblaščeni trenerji delajo v isti bazi.</p></div>'+
+  '<div class="grid g4">'+
+  '<div class="card kpi"><b>'+data.players.length+'</b><span>igralk</span></div><div class="card kpi"><b>'+data.trainings.length+'</b><span>treningov</span></div><div class="card kpi"><b>'+data.observations.length+'</b><span>IDP opažanj</span></div><div class="card kpi"><b>'+data.reviews.length+'</b><span>mesečnih reviewov</span></div></div>'+
+  '<div class="grid g2" style="margin-top:14px"><div class="card"><div class="row between"><h3>Aktualni fokusi</h3><button class="btn" data-go="players">Vse igralke</button></div><div class="grid g2">'+data.players.slice(0,6).map(p=>'<div class="card click" data-player="'+p.id+'"><div class="row"><div class="avatar">'+initials(p.full_name)+'</div><div><h4>'+esc(p.full_name)+'</h4><div class="small muted">'+esc(club(p.club_id)?.name||'')+'</div></div></div><div class="small" style="margin-top:9px">'+esc(p.current_focus||'')+'</div><div class="chips" style="margin-top:8px">'+chips(p.primary_groups)+'</div>'+audit(p)+'</div>').join('')+'</div></div>'+
+  '<div class="card"><div class="row between"><h3>Zadnja opažanja</h3>'+(canObserve()?'<button class="btn primary" id="quickObs">+ Opažanje</button>':'')+'</div><div class="list">'+obs.map(o=>{let p=player(o.player_id),t=tr(o.training_id);return '<div class="item click" data-player="'+o.player_id+'">'+score(o.score)+'<div class="grow"><b class="small">'+esc(p?.full_name||'')+'</b><div class="tiny muted">'+esc(t?.title||'')+' · '+esc(o.focus)+'</div>'+audit(o)+'</div></div>'}).join('')+'</div></div></div>');
+  bindCommon(); if($('#quickObs'))$('#quickObs').onclick=()=>openObs();
+}
+
+function renderPlayers(){
+  setContent('<div class="head"><div><h2>Igralke</h2><div class="small muted">Profili, IDP področja, 4-tedenski fokus, treningi in review.</div></div><div class="toolbar">'+(canInternal()?'<button class="btn primary" id="newPlayer">+ Nova igralka</button>':'')+'</div></div><div class="grid g4">'+data.players.map(p=>'<div class="card click" data-player="'+p.id+'"><div class="row"><div class="avatar">'+initials(p.full_name)+'</div><div><h4>'+esc(p.full_name)+'</h4><div class="small muted">'+esc(club(p.club_id)?.name||'')+'</div></div></div><div class="tiny muted" style="margin-top:12px">GLAVNI IDP FOKUS</div><div class="small">'+esc(p.current_focus||'—')+'</div><div class="chips" style="margin-top:8px">'+chips(p.primary_groups)+'</div>'+audit(p)+'</div>').join('')+'</div>');
+  bindCommon();if($('#newPlayer'))$('#newPlayer').onclick=()=>openPlayer();
+}
+function renderPlayer(id){
+  let p=player(id);if(!p)return;let obs=data.observations.filter(x=>x.player_id===id),revs=data.reviews.filter(x=>x.player_id===id),recs=data.records.filter(x=>x.player_id===id);
+  setContent('<div class="head"><div><button class="btn" data-back="players">← Igralke</button><h2>'+esc(p.full_name)+'</h2><div class="small muted">'+esc(club(p.club_id)?.name||'')+'</div>'+audit(p)+'</div><div class="toolbar">'+(canInternal()?'<button class="btn" id="editPlayer">Uredi cel profil</button>':'')+(canObserve()?'<button class="btn" id="newRecord">+ Nov zapis</button><button class="btn primary" id="newPlayerObs">+ Opažanje</button>':'')+'</div></div>'+
+  '<div class="grid g2"><div class="card"><h3>Aktualni IDP</h3>'+
+  fieldBlock('Glavni IDP fokus',p.current_focus,'current_focus')+fieldBlock('Naslednji mikro fokus',p.next_micro_focus,'next_micro_focus')+fieldBlock('Coaching cue',p.coaching_cue,'coaching_cue')+
+  '<div style="margin-top:12px"><div class="tiny muted">IDP SKUPINE '+(canInternal()?'<button class="edit" data-qedit="primary_groups">✎</button>':'')+'</div><div class="chips">'+chips(p.primary_groups)+'</div></div></div>'+
+  '<div class="card"><h3>4-tedenski fokus</h3><div class="weekgrid">'+(p.four_week_plan||[]).map((w,i)=>'<div class="week"><b>TEDEN '+(i+1)+'</b><div class="small">'+esc(w)+'</div></div>').join('')+'</div></div></div>'+
+  '<div class="card" style="margin-top:14px"><h3>Trening spremljanje</h3><div class="table"><table><thead><tr><th>Datum</th><th>Trening</th><th>Skupina</th><th>Fokus</th><th>Ocena</th><th>Opomba</th><th>Naslednji mikro fokus</th><th>Uredila</th></tr></thead><tbody>'+obs.map(o=>{let t=tr(o.training_id),u=prof(o.updated_by);return '<tr><td>'+dsl(t?.training_date)+'</td><td><a href="#" data-training="'+o.training_id+'">'+esc(t?.title||'')+'</a></td><td>'+esc(o.idp_group)+'</td><td>'+esc(o.focus)+'</td><td>'+score(o.score)+'</td><td>'+esc(o.note||'')+'</td><td>'+esc(o.next_micro_focus||'')+'</td><td>'+esc(u?.full_name||'Začetni vnos')+'<br><span class="tiny muted">'+ts(o.updated_at)+'</span></td></tr>'}).join('')+'</tbody></table></div></div>'+
+  '<div class="grid g2" style="margin-top:14px"><div class="card"><h3>Zapisi</h3><div class="list">'+recs.map(r=>'<div class="item"><div class="grow"><b class="small">'+esc(r.title||r.record_type)+'</b><div class="tiny muted">'+dsl(r.record_date)+' · '+esc(r.record_type)+'</div><div class="small">'+esc(r.body)+'</div>'+audit(r)+'</div></div>').join('')+'</div></div>'+
+  '<div class="card"><div class="row between"><h3>Mesečni review</h3>'+(canInternal()?'<button class="btn" id="newReviewP">+ Review</button>':'')+'</div>'+revs.map(r=>'<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>'+esc(monthName(r.month))+'</b><div class="small"><b>Napredek:</b> '+esc(r.progress||'')+'</div><div class="small"><b>Naslednji cilj:</b> '+esc(r.next_four_week_goal||'')+'</div>'+audit(r)+'</div>').join('')+'</div></div>');
+  bindCommon();
+  if($('#editPlayer'))$('#editPlayer').onclick=()=>openPlayer(id);
+  if($('#newPlayerObs'))$('#newPlayerObs').onclick=()=>openObs(null,id);
+  if($('#newRecord'))$('#newRecord').onclick=()=>openRecord(id);
+  if($('#newReviewP'))$('#newReviewP').onclick=()=>openReview(id);
+  $$('[data-qedit]').forEach(b=>b.onclick=()=>quickEdit(id,b.dataset.qedit));
+}
+function fieldBlock(label,val,field){return '<div style="margin-top:12px"><div class="tiny muted">'+label.toUpperCase()+' '+(canInternal()?'<button class="edit" data-qedit="'+field+'">✎</button>':'')+'</div><div class="small">'+esc(val||'—')+'</div></div>'}
+
+function renderTrainings(){
+  setContent('<div class="head"><div><h2>Treningi</h2><div class="small muted">En vnos treninga, nanj pa so vezana vsa IDP opažanja.</div></div><div class="toolbar">'+(canInternal()?'<button class="btn primary" id="newTraining">+ Nov trening</button>':'')+'</div></div><div class="list">'+data.trainings.map(t=>'<div class="item click" data-training="'+t.id+'"><div class="grow"><b>'+esc(t.title)+'</b><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+' · '+esc(t.method||'')+'</div><div class="chips" style="margin-top:5px">'+chips(t.idp_areas)+'</div>'+audit(t)+'</div><div class="small muted">'+data.observations.filter(o=>o.training_id===t.id).length+' opaž.</div></div>').join('')+'</div>');
+  bindCommon();if($('#newTraining'))$('#newTraining').onclick=()=>openTraining();
+}
+async function renderTraining(id){
+  let t=tr(id);if(!t)return;let obs=data.observations.filter(x=>x.training_id===id),docs=data.documents.filter(x=>x.training_id===id);
+  setContent('<div class="head"><div><button class="btn" data-back="trainings">← Treningi</button><h2>'+esc(t.title)+'</h2><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+'</div>'+audit(t)+'</div><div class="toolbar">'+(canInternal()?'<button class="btn" id="editTraining">Uredi trening</button>':'')+(canObserve()?'<button class="btn primary" id="newObsT">+ IDP opažanje</button>':'')+'</div></div>'+
+  '<div class="grid g2"><div class="card"><h3>Vsebina</h3><div class="small"><b>Namen:</b> '+esc(t.purpose||'—')+'<br><b>Metoda:</b> '+esc(t.method||'—')+'<br><br>'+esc(t.notes||'—')+'</div><div class="chips" style="margin-top:10px">'+chips(t.idp_areas)+'</div></div>'+
+  '<div class="card"><h3>Dokumenti in povezave</h3><div class="small"><b>Video:</b> '+(t.video_url?'<a target="_blank" href="'+esc(t.video_url)+'">odpri</a>':'—')+'<br><b>Druga povezava:</b> '+(t.document_url?'<a target="_blank" href="'+esc(t.document_url)+'">odpri</a>':'—')+'</div><div id="docs" style="margin-top:10px">'+docs.map(d=>'<div class="item"><div class="grow"><b class="small">Word: '+esc(d.file_name)+'</b><div class="tiny muted">'+Math.round((d.size_bytes||0)/1024)+' KB</div></div><button class="btn" data-doc="'+d.id+'">Odpri</button></div>').join('')+'</div></div></div>'+
+  '<div class="card" style="margin-top:14px"><h3>IDP spremljanje</h3><div class="table"><table><thead><tr><th>Igralka</th><th>Skupina</th><th>Fokus</th><th>Vedenje</th><th>Ocena</th><th>Opomba</th><th>Mikro fokus</th><th>Uredila</th></tr></thead><tbody>'+obs.map(o=>{let p=player(o.player_id),u=prof(o.updated_by);return '<tr><td><a href="#" data-player="'+o.player_id+'">'+esc(p?.full_name||'')+'</a></td><td>'+esc(o.idp_group)+'</td><td>'+esc(o.focus)+'</td><td>'+esc(o.behavior)+'</td><td>'+score(o.score)+'</td><td>'+esc(o.note||'')+'</td><td>'+esc(o.next_micro_focus||'')+'</td><td>'+esc(u?.full_name||'Začetni vnos')+'<br><span class="tiny muted">'+ts(o.updated_at)+'</span></td></tr>'}).join('')+'</tbody></table></div></div>');
+  bindCommon();if($('#editTraining'))$('#editTraining').onclick=()=>openTraining(id);if($('#newObsT'))$('#newObsT').onclick=()=>openObs(id);
+  $$('[data-doc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.doc));
+}
+function renderTracking(){
+  let months=[...new Set(data.trainings.map(t=>t.training_date.slice(0,7)))].sort().reverse(),m=window.trackMonth||months[0]||new Date().toISOString().slice(0,7);
+  let trs=data.trainings.filter(t=>t.training_date.startsWith(m)).sort((a,b)=>a.training_date.localeCompare(b.training_date)),wm={};
+  trs.forEach(t=>{let d=new Date(t.training_date+'T12:00:00'),day=(d.getDay()+6)%7,mon=new Date(d);mon.setDate(d.getDate()-day);let k=mon.toISOString().slice(0,10);(wm[k]??=[]).push(t)});
+  let weeks=Object.entries(wm).sort((a,b)=>a[0].localeCompare(b[0]));
+  setContent('<div class="head"><div><h2>Mesečno spremljanje</h2><div class="small muted">Vsak mesec se začne s Tednom 1.</div></div><select id="trackMonth">'+months.map(x=>'<option value="'+x+'" '+(x===m?'selected':'')+'>'+esc(monthName(x+'-01'))+'</option>').join('')+'</select></div>'+
+  weeks.map((w,i)=>'<div class="card" style="margin-bottom:12px"><h3>Teden '+(i+1)+'</h3><div class="daygrid">'+['Ponedeljek','Torek','Sreda','Četrtek'].map(day=>{let a=w[1].filter(t=>t.day_name===day);return '<div class="day"><header>'+day+'</header><div class="body">'+(a.length?a.map(t=>'<div class="mini click" data-training="'+t.id+'"><b class="small">'+esc(t.title)+'</b><div class="tiny muted">'+dsl(t.training_date)+'</div>'+data.observations.filter(o=>o.training_id===t.id).map(o=>'<div class="row" style="margin-top:5px">'+score(o.score)+'<span class="tiny">'+esc(player(o.player_id)?.full_name||'')+' · '+esc(o.focus)+'</span></div>').join('')+'</div>').join(''):'<div class="tiny muted">—</div>')+'</div></div>'}).join('')+'</div></div>').join(''));
+  bindCommon();$('#trackMonth').onchange=e=>{window.trackMonth=e.target.value;renderTracking()};
+}
+function renderReviews(){
+  setContent('<div class="head"><div><h2>Mesečni review</h2><div class="small muted">Podatki + strokovna interpretacija + naslednji razvojni korak.</div></div>'+(canInternal()?'<button class="btn primary" id="newReview">+ Nov review</button>':'')+'</div><div class="list">'+data.reviews.map(r=>{let p=player(r.player_id);return '<div class="card click" data-player="'+r.player_id+'"><div class="row between"><div><h4>'+esc(p?.full_name||'')+'</h4><div class="small muted">'+esc(monthName(r.month))+'</div></div><div class="chips">'+chips(p?.primary_groups)+'</div></div><div class="small" style="margin-top:10px"><b>Napredek:</b> '+esc(r.progress||'')+'</div><div class="small"><b>Naslednji 4-tedenski cilj:</b> '+esc(r.next_four_week_goal||'')+'</div>'+audit(r)+'</div>'}).join('')+'</div>');
+  bindCommon();if($('#newReview'))$('#newReview').onclick=()=>openReview();
+}
+function renderAudit(){
+  if(!canInternal()){setContent('<div class="card">Za to vlogo zgodovina sprememb ni dostopna.</div>');return}
+  setContent('<div class="head"><div><h2>Zgodovina sprememb</h2><div class="small muted">Kdo je kaj dodal ali uredil.</div></div></div><div class="list">'+data.audit.map(a=>'<div class="item"><div class="grow"><b class="small">'+esc(prof(a.changed_by)?.full_name||'Sistemski/začetni vnos')+' · '+esc(a.entity_type)+' · '+esc(a.action)+'</b><div class="tiny muted">'+ts(a.changed_at)+'</div></div></div>').join('')+'</div>');
+}
+function renderUsers(){
+  if(me.role!=='admin'){setContent('<div class="card">Samo administrator lahko ureja uporabnice.</div>');return}
+  setContent('<div class="head"><div><h2>Uporabnice</h2><div class="small muted">Odobri trenerke in določi njihovo vlogo ter klub.</div></div></div><div class="table"><table><thead><tr><th>Ime</th><th>E-pošta</th><th>Vloga</th><th>Klub</th><th>Status</th><th></th></tr></thead><tbody>'+data.profiles.map(p=>'<tr><td>'+esc(p.full_name||'')+'</td><td>'+esc(p.email||'')+'</td><td><select data-role="'+p.id+'">'+['pending','admin','dno_coach','club_coach','analyst','player'].map(r=>'<option value="'+r+'" '+(r===p.role?'selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select></td><td><select data-club="'+p.id+'"><option value="">—</option>'+data.clubs.map(c=>'<option value="'+c.id+'" '+(c.id===p.club_id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></td><td>'+(p.active?'Aktivna':'Neaktivna')+'</td><td><button class="btn" data-save-user="'+p.id+'">Shrani</button></td></tr>').join('')+'</tbody></table></div>');
+  $$('[data-save-user]').forEach(b=>b.onclick=async()=>{let id=b.dataset.saveUser,role=$('[data-role="'+id+'"]').value,club_id=$('[data-club="'+id+'"]').value||null;let {error}=await sb.from('profiles').update({role,club_id}).eq('id',id);if(error)alert(error.message);else await loadAll(false)});
+}
+
+function bindCommon(){
+  $$('[data-player]').forEach(x=>x.onclick=e=>{e.preventDefault();selectedPlayer=x.dataset.player;selectedTraining=null;renderPlayer(selectedPlayer)});
+  $$('[data-training]').forEach(x=>x.onclick=e=>{e.preventDefault();selectedTraining=x.dataset.training;selectedPlayer=null;renderTraining(selectedTraining)});
+  $$('[data-back]').forEach(x=>x.onclick=()=>{selectedPlayer=selectedTraining=null;view=x.dataset.back;render()});
+  $$('[data-go]').forEach(x=>x.onclick=()=>{view=x.dataset.go;render()});
+}
+
+function fillClub(sel,val){sel.innerHTML='<option value="">—</option>'+data.clubs.map(c=>'<option value="'+c.id+'" '+(c.id===val?'selected':'')+'>'+esc(c.name)+'</option>').join('')}
+function arr(s){return [...new Set((s||'').split(',').map(x=>x.trim().toUpperCase()).filter(x=>['A','B','C','D','E'].includes(x)))]}
+function openPlayer(id){
+  let f=$('#playerForm'),p=id?player(id):null;f.reset();f.id.value=id||'';f.full_name.value=p?.full_name||'';fillClub(f.club_id,p?.club_id);f.current_focus.value=p?.current_focus||'';f.next_micro_focus.value=p?.next_micro_focus||'';f.coaching_cue.value=p?.coaching_cue||'';f.primary_groups.value=(p?.primary_groups||[]).join(', ');f.secondary_groups.value=(p?.secondary_groups||[]).join(', ');f.strengths.value=p?.strengths||'';f.development_reserve.value=p?.development_reserve||'';let w=p?.four_week_plan||[];f.w1.value=w[0]||'';f.w2.value=w[1]||'';f.w3.value=w[2]||'';f.w4.value=w[3]||'';openM('playerModal');
+}
+$('#playerForm').onsubmit=async e=>{e.preventDefault();let f=e.target,id=f.id.value,obj={full_name:f.full_name.value,club_id:f.club_id.value||null,current_focus:f.current_focus.value,next_micro_focus:f.next_micro_focus.value,coaching_cue:f.coaching_cue.value,primary_groups:arr(f.primary_groups.value),secondary_groups:arr(f.secondary_groups.value),strengths:f.strengths.value,development_reserve:f.development_reserve.value,four_week_plan:[f.w1.value,f.w2.value,f.w3.value,f.w4.value]};let q=id?sb.from('players').update(obj).eq('id',id).select().single():sb.from('players').insert(obj).select().single();let {data:r,error}=await q;if(error)return alert(error.message);closeM($('#playerModal .x'));await loadAll(false);selectedPlayer=r.id;renderPlayer(r.id)};
+async function quickEdit(id,field){let p=player(id),v=field==='primary_groups'?(p.primary_groups||[]).join(', '):(p[field]||''),n=prompt('Uredi:',v);if(n===null)return;let obj={};obj[field]=field==='primary_groups'?arr(n):n;let {error}=await sb.from('players').update(obj).eq('id',id);if(error)alert(error.message);else{await loadAll(false);selectedPlayer=id;renderPlayer(id)}}
+
+function openTraining(id){
+  let f=$('#trainingForm'),t=id?tr(id):null;f.reset();f.id.value=id||'';f.training_date.value=t?.training_date||new Date().toISOString().slice(0,10);f.day_name.value=t?.day_name||'Ponedeljek';f.title.value=t?.title||'';f.purpose.value=t?.purpose||'';f.method.value=t?.method||'';f.idp_areas.value=(t?.idp_areas||[]).join(', ');f.notes.value=t?.notes||'';f.video_url.value=t?.video_url||'';f.document_url.value=t?.document_url||'';openM('trainingModal')
+}
+$('#trainingForm').onsubmit=async e=>{e.preventDefault();let f=e.target,id=f.id.value,obj={training_date:f.training_date.value,day_name:f.day_name.value,title:f.title.value,purpose:f.purpose.value,method:f.method.value,idp_areas:arr(f.idp_areas.value),notes:f.notes.value,video_url:f.video_url.value,document_url:f.document_url.value};let q=id?sb.from('trainings').update(obj).eq('id',id).select().single():sb.from('trainings').insert(obj).select().single();let {data:r,error}=await q;if(error)return alert(error.message);let file=$('#wordFile').files[0];if(file){let ext=(file.name.split('.').pop()||'').toLowerCase();if(!['doc','docx'].includes(ext))return alert('Naloži .doc ali .docx datoteko.');let path=r.id+'/'+Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');let up=await sb.storage.from('training-documents').upload(path,file);if(up.error)return alert(up.error.message);await sb.from('training_documents').insert({training_id:r.id,storage_path:path,file_name:file.name,mime_type:file.type,size_bytes:file.size})}closeM($('#trainingModal .x'));await loadAll(false);selectedTraining=r.id;renderTraining(r.id)};
+async function openDoc(id){let d=data.documents.find(x=>x.id===id);if(!d)return;let {data:r,error}=await sb.storage.from('training-documents').createSignedUrl(d.storage_path,60);if(error)return alert(error.message);window.open(r.signedUrl,'_blank')}
+
+function fillPlayerSel(s,val){s.innerHTML=data.players.map(p=>'<option value="'+p.id+'" '+(p.id===val?'selected':'')+'>'+esc(p.full_name)+'</option>').join('')}
+function openObs(tid,pid,id){
+  let f=$('#obsForm'),o=id?data.observations.find(x=>x.id===id):null;f.reset();f.id.value=id||'';f.training_id.value=tid||o?.training_id||data.trainings[0]?.id||'';fillPlayerSel(f.player_id,pid||o?.player_id);f.idp_group.value=o?.idp_group||'A';f.focus.value=o?.focus||'';f.behavior.value=o?.behavior||'';f.score.value=o?.score??1;f.feedback_given.value=String(o?.feedback_given??false);f.note.value=o?.note||'';f.next_micro_focus.value=o?.next_micro_focus||'';openM('obsModal')
+}
+$('#obsForm').onsubmit=async e=>{e.preventDefault();let f=e.target,id=f.id.value,obj={training_id:f.training_id.value,player_id:f.player_id.value,idp_group:f.idp_group.value,focus:f.focus.value,behavior:f.behavior.value,score:+f.score.value,feedback_given:f.feedback_given.value==='true',note:f.note.value,next_micro_focus:f.next_micro_focus.value};let q=id?sb.from('observations').update(obj).eq('id',id):sb.from('observations').insert(obj);let {error}=await q;if(error)return alert(error.message);closeM($('#obsModal .x'));await loadAll(false);selectedTraining=obj.training_id;renderTraining(obj.training_id)};
+
+function openRecord(pid){let f=$('#recordForm');f.reset();f.player_id.value=pid;f.record_date.value=new Date().toISOString().slice(0,10);openM('recordModal')}
+$('#recordForm').onsubmit=async e=>{e.preventDefault();let f=e.target,obj={player_id:f.player_id.value,record_date:f.record_date.value,record_type:f.record_type.value,title:f.title.value,body:f.body.value,micro_focus:f.micro_focus.value};let {error}=await sb.from('player_records').insert(obj);if(error)return alert(error.message);if(obj.record_type==='Mikro fokus'&&obj.micro_focus)await sb.from('players').update({next_micro_focus:obj.micro_focus}).eq('id',obj.player_id);closeM($('#recordModal .x'));await loadAll(false);selectedPlayer=obj.player_id;renderPlayer(obj.player_id)};
+
+function openReview(pid){let f=$('#reviewForm');f.reset();fillPlayerSel(f.player_id,pid);f.month.value=new Date().toISOString().slice(0,7);openM('reviewModal')}
+$('#reviewForm').onsubmit=async e=>{e.preventDefault();let f=e.target,month=f.month.value+'-01',obj={player_id:f.player_id.value,month,progress:f.progress.value,remaining:f.remaining.value,evidence:f.evidence.value,next_four_week_goal:f.next_four_week_goal.value,player_feedback:f.player_feedback.value||'še ni prejet'};let {error}=await sb.from('monthly_reviews').upsert(obj,{onConflict:'player_id,month'});if(error)return alert(error.message);if(obj.next_four_week_goal)await sb.from('players').update({next_micro_focus:obj.next_four_week_goal}).eq('id',obj.player_id);closeM($('#reviewModal .x'));await loadAll(false);selectedPlayer=obj.player_id;renderPlayer(obj.player_id)};
+
+const {data:{session:initial}}=await sb.auth.getSession();if(initial)await boot(initial);
+</script>
+</body></html>
