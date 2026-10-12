@@ -32,6 +32,7 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
 .daygrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.day{border:1px solid var(--line);border-radius:13px;overflow:hidden}.day header{background:#f3eef9;padding:9px;font-size:11px;font-weight:900}.day .body{padding:8px}.mini{border:1px solid var(--line);padding:8px;border-radius:10px;margin-bottom:6px}
 @media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3,.g2{grid-template-columns:1fr}.weekgrid{grid-template-columns:1fr 1fr}}
 @media(max-width:720px){.top{flex-wrap:wrap;padding:10px}.brand{flex:1}.user{font-size:10px}.user small{display:none}nav{order:3;width:100%}main{padding:15px 11px 45px}.g4{grid-template-columns:1fr}.head{align-items:flex-start;flex-direction:column}.form{grid-template-columns:1fr}.full{grid-column:auto}.daygrid,.weekgrid{grid-template-columns:1fr}.search{min-width:0;width:100%}}
+.btn.danger{color:#a33245;border-color:#edbdc5;background:#fff4f5}.btn.danger:hover{background:#fae5e9}
 .analysis-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}.analysis-card{border-left:4px solid var(--p)}.analysis-card .row{flex-wrap:wrap}.review-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}.review-section{margin-top:10px}
 .training-notes{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin-top:12px}
 </style>
@@ -141,7 +142,7 @@ const SB_URL='https://chkzewdrkzjmblbrzkyy.supabase.co';
 const SB_KEY='sb_publishable_G2bhNT5Z0F2y7KaHfuvk0Q_yX0YH6Ch';
 const sb=createClient(SB_URL,SB_KEY);
 let signup=false, session=null, me=null, data={clubs:[],profiles:[],players:[],trainings:[],documents:[],observations:[],reviews:[],records:[],audit:[]};
-let view='dashboard', selectedPlayer=null, selectedTraining=null;
+let view='dashboard', selectedPlayer=null, selectedTraining=null, deletingTraining=false;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const dsl=s=>s?new Date(s+(String(s).length===10?'T12:00:00':'')).toLocaleDateString('sl-SI'):'';
@@ -179,7 +180,7 @@ $('#refreshBtn').onclick=()=>loadAll(true);
 $$('[data-close]').forEach(b=>b.onclick=()=>closeM(b));
 $('#nav').onclick=e=>{let b=e.target.closest('[data-view]');if(!b)return;view=b.dataset.view;selectedPlayer=null;selectedTraining=null;render()};
 window.addEventListener('focus',()=>{if(session&&me?.role!=='pending')loadAll(false)});
-setInterval(()=>{if(session&&me?.role!=='pending'&&document.visibilityState==='visible'&&!document.querySelector('.modal.on'))loadAll(false)},60000);
+setInterval(()=>{if(session&&me?.role!=='pending'&&document.visibilityState==='visible'&&!document.querySelector('.modal.on')&&!deletingTraining)loadAll(false)},60000);
 
 async function boot(s){
   session=s; if(!s)return;
@@ -298,12 +299,13 @@ function renderPlayer(id){
 function fieldBlock(label,val,field){return '<div style="margin-top:12px"><div class="tiny muted">'+label.toUpperCase()+' '+(canInternal()?'<button class="edit" data-qedit="'+field+'">✎</button>':'')+'</div><div class="small">'+esc(val||'—')+'</div></div>'}
 
 function renderTrainings(){
-  setContent('<div class="head"><div><h2>Treningi</h2><div class="small muted">En vnos treninga, nanj pa so vezana vsa IDP opažanja.</div></div><div class="toolbar">'+(canInternal()?'<button class="btn primary" id="newTraining">+ Nov trening</button>':'')+'</div></div><div class="list">'+data.trainings.map(t=>'<div class="item click" data-training="'+t.id+'"><div class="grow"><b>'+esc(t.title)+'</b><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+' · '+esc(t.method||'')+'</div><div class="chips" style="margin-top:5px">'+chips(t.idp_areas)+'</div>'+audit(t)+'</div><div class="small muted">'+data.observations.filter(o=>o.training_id===t.id).length+' opaž.</div></div>').join('')+'</div>');
+  const notice=window.trainingDeleteNotice||'';window.trainingDeleteNotice='';
+  setContent((notice?'<div class="msg ok" role="status" style="margin-bottom:12px">'+esc(notice)+'</div>':'')+'<div class="head"><div><h2>Treningi</h2><div class="small muted">En vnos treninga, nanj pa so vezana vsa IDP opažanja.</div></div><div class="toolbar">'+(canInternal()?'<button class="btn primary" id="newTraining">+ Nov trening</button>':'')+'</div></div><div class="list">'+data.trainings.map(t=>'<div class="item click" data-training="'+t.id+'"><div class="grow"><b>'+esc(t.title)+'</b><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+' · '+esc(t.method||'')+'</div><div class="chips" style="margin-top:5px">'+chips(t.idp_areas)+'</div>'+audit(t)+'</div><div class="small muted">'+data.observations.filter(o=>o.training_id===t.id).length+' opaž.</div>'+(canInternal()?'<button class="btn danger" data-delete-training="'+t.id+'">Izbriši trening</button>':'')+'</div>').join('')+'</div>');
   bindCommon();if($('#newTraining'))$('#newTraining').onclick=()=>openTraining();
 }
 async function renderTraining(id){
   let t=tr(id);if(!t)return;let obs=data.observations.filter(x=>x.training_id===id),docs=data.documents.filter(x=>x.training_id===id);
-  setContent('<div class="head"><div><button class="btn" data-back="trainings">← Treningi</button><h2>'+esc(t.title)+'</h2><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+'</div>'+audit(t)+'</div><div class="toolbar">'+(canInternal()?'<button class="btn" id="editTraining">Uredi trening</button>':'')+(canObserve()?'<button class="btn primary" id="newObsT">+ IDP opažanje</button>':'')+'</div></div>'+
+  setContent('<div class="head"><div><button class="btn" data-back="trainings">← Treningi</button><h2>'+esc(t.title)+'</h2><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+'</div>'+audit(t)+'</div><div class="toolbar">'+(canInternal()?'<button class="btn" id="editTraining">Uredi trening</button><button class="btn danger" data-delete-training="'+id+'">Izbriši trening</button>':'')+(canObserve()?'<button class="btn primary" id="newObsT">+ IDP opažanje</button>':'')+'</div></div>'+
   '<div class="grid g2"><div class="card"><h3>Vsebina</h3><div class="small"><b>Namen:</b> '+esc(t.purpose||'—')+'<br><b>Metoda:</b> '+esc(t.method||'—')+'</div><div class="small training-notes">'+esc(t.notes||'—')+'</div><div class="chips" style="margin-top:10px">'+chips(t.idp_areas)+'</div></div>'+
   '<div class="card"><h3>Dokumenti in povezave</h3><div class="small"><b>Video:</b> '+(t.video_url?'<a target="_blank" href="'+esc(t.video_url)+'">odpri</a>':'—')+'<br><b>Druga povezava:</b> '+(t.document_url?'<a target="_blank" href="'+esc(t.document_url)+'">odpri</a>':'—')+'</div><div id="docs" style="margin-top:10px">'+docs.map(d=>'<div class="item"><div class="grow"><b class="small">Word: '+esc(d.file_name)+'</b><div class="tiny muted">'+Math.round((d.size_bytes||0)/1024)+' KB</div></div><button class="btn" data-doc="'+d.id+'">Odpri</button></div>').join('')+'</div></div></div>'+
   '<div class="card" style="margin-top:14px"><h3>IDP spremljanje</h3><div class="table"><table><thead><tr><th>Igralka</th><th>Skupina</th><th>Fokus</th><th>Vedenje</th><th>Ocena</th><th>Opomba</th><th>Mikro fokus</th><th>Uredila</th></tr></thead><tbody>'+obs.map(o=>{let p=player(o.player_id),u=prof(o.updated_by);return '<tr><td><a href="#" data-player="'+o.player_id+'">'+esc(p?.full_name||'')+'</a></td><td>'+esc(o.idp_group)+'</td><td>'+esc(o.focus)+'</td><td>'+esc(o.behavior)+'</td><td>'+score(o.score)+(canObserve()?'<button class="edit" aria-label="Uredi opažanje" data-edit-observation="'+o.id+'">✎</button>':'')+'</td><td>'+esc(o.note||'')+'</td><td>'+esc(o.next_micro_focus||'')+'</td><td>'+esc(u?.full_name||'Začetni vnos')+'<br><span class="tiny muted">'+ts(o.updated_at)+'</span></td></tr>'}).join('')+(obs.length?'':'<tr><td colspan="8" class="muted">IDP spremljanje še ni vneseno. Trening je shranjen; odsotnost opažanj ne pomeni ocene 0.</td></tr>')+'</tbody></table></div></div>');
@@ -347,6 +349,7 @@ function renderUsers(){
 }
 
 function bindCommon(){
+  $$('[data-delete-training]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();deleteTraining(b.dataset.deleteTraining,b)});
   $$('[data-edit-observation]').forEach(b=>b.onclick=e=>{e.stopPropagation();const o=data.observations.find(o=>o.id===b.dataset.editObservation);if(o)openObs(o.training_id,o.player_id,o.id)});
   $$('[data-player]').forEach(x=>x.onclick=e=>{e.preventDefault();selectedPlayer=x.dataset.player;selectedTraining=null;renderPlayer(selectedPlayer)});
   $$('[data-training]').forEach(x=>x.onclick=e=>{e.preventDefault();selectedTraining=x.dataset.training;selectedPlayer=null;renderTraining(selectedTraining)});
@@ -361,6 +364,34 @@ function openPlayer(id){
 }
 $('#playerForm').onsubmit=async e=>{e.preventDefault();let f=e.target,id=f.id.value,obj={full_name:f.full_name.value,club_id:f.club_id.value||null,current_focus:f.current_focus.value,next_micro_focus:f.next_micro_focus.value,coaching_cue:f.coaching_cue.value,primary_groups:arr(f.primary_groups.value),secondary_groups:arr(f.secondary_groups.value),strengths:f.strengths.value,development_reserve:f.development_reserve.value,four_week_plan:[f.w1.value,f.w2.value,f.w3.value,f.w4.value]};let q=id?sb.from('players').update(obj).eq('id',id).select().single():sb.from('players').insert(obj).select().single();let {data:r,error}=await q;if(error)return alert(error.message);closeM($('#playerModal .x'));await loadAll(false);selectedPlayer=r.id;renderPlayer(r.id)};
 async function quickEdit(id,field){let p=player(id),v=field==='primary_groups'?(p.primary_groups||[]).join(', '):(p[field]||''),n=prompt('Uredi:',v);if(n===null)return;let obj={};obj[field]=field==='primary_groups'?arr(n):n;let {error}=await sb.from('players').update(obj).eq('id',id);if(error)alert(error.message);else{await loadAll(false);selectedPlayer=id;renderPlayer(id)}}
+
+async function deleteTraining(id,button){
+  if(!canInternal()||deletingTraining)return;
+  const t=tr(id);if(!t)return;
+  deletingTraining=true;const oldLabel=button.textContent;button.disabled=true;button.textContent='Preverjam …';
+  let deleted=false;
+  try{
+    const [obsResult,docsResult]=await Promise.all([
+      sb.from('observations').select('id',{count:'exact',head:true}).eq('training_id',id),
+      sb.from('training_documents').select('storage_path').eq('training_id',id)
+    ]);
+    if(obsResult.error||docsResult.error)throw new Error('Povezanih zapisov ni bilo mogoče preveriti. Poskusi ponovno.');
+    const docs=docsResult.data||[];
+    const message='Trajno izbrišem trening »'+t.title+'« ('+dsl(t.training_date)+')?\n\nIzbrisana bodo tudi vsa povezana IDP opažanja (trenutno '+(obsResult.count||0)+') in priloge (trenutno '+docs.length+'). Sprotne analize bodo preračunane. Shranjeni mesečni reviewi in zapisi igralk ostanejo; po potrebi jih preglej.\n\nIzbrisa ni mogoče razveljaviti.';
+    if(!confirm(message))return;
+    button.textContent='Brišem …';
+    const result=await sb.from('trainings').delete().eq('id',id).select('id');
+    if(result.error)throw new Error(result.error.message);
+    if(!result.data?.some(row=>row.id===id))throw new Error('Trening ni bil izbrisan. Morda nimaš dovoljenja ali je že odstranjen. Osveži podatke.');
+    deleted=true;
+    let cleanupFailed=false;
+    if(docs.length){try{const cleanup=await sb.storage.from('training-documents').remove(docs.map(d=>d.storage_path));cleanupFailed=!!cleanup.error}catch{cleanupFailed=true}}
+    window.trainingDeleteNotice='Trening je izbrisan. Povezana IDP opažanja so odstranjena; sprotne analize so posodobljene.'+(cleanupFailed?' Datotek prilog ni bilo mogoče odstraniti iz shrambe; v aplikaciji niso več prikazane.':'');
+    selectedTraining=null;selectedPlayer=null;view='trainings';
+    await loadAll(false);
+  }catch(error){alert((deleted?'Trening je izbrisan, vendar osvežitev ni uspela. Osveži stran. ':'Izbris ni uspel: ')+error.message)}
+  finally{deletingTraining=false;if(button.isConnected){button.disabled=false;button.textContent=oldLabel}}
+}
 
 function openTraining(id){
   let f=$('#trainingForm'),t=id?tr(id):null;f.reset();f.id.value=id||'';f.training_date.value=t?.training_date||new Date().toISOString().slice(0,10);f.day_name.value=t?.day_name||'Ponedeljek';f.title.value=t?.title||'';f.purpose.value=t?.purpose||'';f.method.value=t?.method||'';f.idp_areas.value=(t?.idp_areas||[]).join(', ');f.notes.value=t?.notes||'';f.video_url.value=t?.video_url||'';f.document_url.value=t?.document_url||'';openM('trainingModal')
