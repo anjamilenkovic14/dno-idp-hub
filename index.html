@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta name="description" content="DNO IDP HUB – skupna aplikacija za spremljanje individualnega razvoja igralk."/>
-<title>DNO IDP HUB</title>
+<meta name="description" content="DNO IDP PROCES – skupna aplikacija za spremljanje individualnega razvoja igralk."/>
+<title>DNO IDP PROCES</title>
 <style>
 :root{--bg:#f7f5fb;--card:#fff;--ink:#241d30;--muted:#756c82;--line:#e8e1ef;--p:#7040bd;--pk:#cf55a0;--ok:#2f8a64;--warn:#b8791f;--shadow:0 12px 30px rgba(55,35,88,.08)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
@@ -41,7 +41,7 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
 <body>
 <section id="authScreen" class="auth">
   <div class="authbox">
-    <div class="row"><div class="logo">IDP</div><div><h1>DNO IDP HUB</h1><div class="small muted">Skupna baza za trenerke</div></div></div>
+    <div class="row"><div class="logo">IDP</div><div><h1>DNO IDP PROCES</h1><div class="small muted">Skupna baza za trenerke</div></div></div>
     <p>Prijavi se s svojim računom. Prva registrirana uporabnica postane administrator; naslednje uporabnice administrator odobri in jim določi vlogo.</p>
     <div class="tabs"><button id="loginTab" class="on">Prijava</button><button id="signupTab">Registracija</button></div>
     <div id="signupName" class="hidden"><input id="fullName" placeholder="Ime in priimek"></div>
@@ -55,7 +55,7 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
 <div id="app" class="hidden">
 <header class="top">
   <div class="logo">IDP</div>
-  <div class="brand"><b>DNO IDP HUB</b><small>Individualni razvoj • spremljanje • trening</small></div>
+  <div class="brand"><b>DNO IDP PROCES</b><small>Individualni razvoj • spremljanje • trening</small></div>
   <nav id="nav">
     <button data-view="dashboard" class="on">Domov</button>
     <button data-view="players">Igralke</button>
@@ -210,7 +210,7 @@ async function boot(s){
   }
   if(!me){$('#authMsg').innerHTML='<div class="msg bad">Profil uporabnice še ni pripravljen. Osveži stran čez nekaj sekund.</div>';return}
   if(me.role==='pending'){
-    $('#authScreen').innerHTML='<div class="authbox"><div class="row"><div class="logo">IDP</div><div><h1>DNO IDP HUB</h1><div class="small muted">'+esc(me.full_name)+'</div></div></div><div class="msg">Tvoj račun je ustvarjen in čaka na odobritev administratorja. Ko ti določi vlogo, se ponovno prijavi.</div><button class="btn" id="pendingLogout" style="width:100%;margin-top:12px">Odjava</button></div>';
+    $('#authScreen').innerHTML='<div class="authbox"><div class="row"><div class="logo">IDP</div><div><h1>DNO IDP PROCES</h1><div class="small muted">'+esc(me.full_name)+'</div></div></div><div class="msg">Tvoj račun je ustvarjen in čaka na odobritev administratorja. Ko ti določi vlogo, se ponovno prijavi.</div><button class="btn" id="pendingLogout" style="width:100%;margin-top:12px">Odjava</button></div>';
     $('#pendingLogout').onclick=async()=>{await sb.auth.signOut();location.reload()};return;
   }
   $('#authScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#userName').textContent=me.full_name||me.email;$('#userRole').textContent=roleLabel(me.role);$('#usersNav').classList.toggle('hidden',me.role!=='admin');$('#materialsNav').classList.toggle('hidden',!canInternal());$('#nav [data-view="reflections"]').classList.toggle('hidden',!canInternal()&&me.role!=='player');
