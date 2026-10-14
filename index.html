@@ -456,7 +456,7 @@ function renderMaterialResults(){
   const list=data.materials.filter(m=>!m.deleted_at&&(!folder||m.folder_path===folder)&&(!query||(m.title+' '+m.folder_path).toLocaleLowerCase('sl').includes(query)));
   $('#materialCount').textContent=list.filter(m=>!m.mime_type.includes('folder')).length+' datotek · '+list.filter(m=>m.mime_type.includes('folder')).length+' map';
   $('#materialResults').innerHTML=list.map(m=>'<div class="item" style="flex-wrap:wrap"><div class="grow" style="min-width:180px;overflow-wrap:anywhere"><b class="small">'+esc(m.title)+'</b><div class="tiny muted">'+esc(m.folder_path)+'</div><div class="tiny muted">'+materialType(m.mime_type)+(m.drive_modified_at?' · Sprememba v Drivu: '+dsl(m.drive_modified_at):'')+'</div></div><a class="btn" href="'+esc(m.url)+'" target="_blank" rel="noopener noreferrer">'+(m.mime_type.includes('folder')?'Odpri mapo':'Odpri gradivo')+' ↗</a><button class="btn danger" data-delete-material="'+esc(m.drive_file_id)+'" aria-label="Izbriši gradivo: '+esc(m.title)+'">Izbriši</button></div>').join('')||'<div class="card muted">'+(query||folder?'Ni zadetkov za izbrano iskanje.':'Gradiva še niso vnesena.')+'</div>';
-  $('[data-delete-material]').forEach(b=>b.onclick=()=>deleteMaterial(b.dataset.deleteMaterial,b));
+  $$('[data-delete-material]').forEach(b=>b.onclick=()=>deleteMaterial(b.dataset.deleteMaterial,b));
 }
 let deletingMaterial=false;
 async function deleteMaterial(id,button){
