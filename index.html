@@ -33,6 +33,7 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
 @media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3,.g2{grid-template-columns:1fr}.weekgrid{grid-template-columns:1fr 1fr}}
 @media(max-width:720px){.top{flex-wrap:wrap;padding:10px}.brand{flex:1}.user{font-size:10px}.user small{display:none}nav{order:3;width:100%}main{padding:15px 11px 45px}.g4{grid-template-columns:1fr}.head{align-items:flex-start;flex-direction:column}.form{grid-template-columns:1fr}.full{grid-column:auto}.daygrid,.weekgrid{grid-template-columns:1fr}.search{min-width:0;width:100%}}
 .btn.danger{color:#a33245;border-color:#edbdc5;background:#fff4f5}.btn.danger:hover{background:#fae5e9}
+#selfModal .field{min-width:0}#selfModal input,#selfModal select,#selfModal textarea{width:100%;min-width:0}
 .analysis-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}.analysis-card{border-left:4px solid var(--p)}.analysis-card .row{flex-wrap:wrap}.review-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}.review-section{margin-top:10px}
 .training-notes{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin-top:12px}
 </style>
@@ -61,6 +62,7 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
     <button data-view="trainings">Treningi</button>
     <button data-view="tracking">Mesečno spremljanje</button>
     <button data-view="reviews">Mesečni review</button>
+    <button data-view="reflections">Samoocene</button>
     <button data-view="materials" id="materialsNav" class="hidden">Gradiva</button>
     <button data-view="audit">Spremembe</button>
     <button data-view="users" id="usersNav" class="hidden">Uporabnice</button>
@@ -137,12 +139,28 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
 <div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary">Shrani</button></div></form>
 </div></div>
 
+<div class="modal" id="selfModal"><div class="modalbox">
+<div class="row between"><h3>Moja samoocena po treningu</h3><button class="x" data-close>×</button></div>
+<p class="small muted">Izberi 1–2 osebna fokusa. Vsakega shrani posebej. Povej, kaj si videla in naredila v konkretni situaciji.</p>
+<form id="selfForm" class="form"><input type="hidden" name="assessment_id"><input type="hidden" name="version">
+<div class="field full"><label for="selfTraining">Trening</label><select name="training_id" id="selfTraining" required></select></div>
+<div class="field full"><label for="selfQuestion">Vprašanje iz mojega IDP</label><select name="question_id" id="selfQuestion"></select></div>
+<div class="field full"><label for="selfPrompt">Vprašanje za razmislek</label><textarea name="question" id="selfPrompt"></textarea></div>
+<div class="field"><label for="selfArea">Razvojno področje</label><input name="area" id="selfArea" placeholder="npr. A + B – priprava sprejema"></div>
+<div class="field"><label for="selfScore">Moja samoocena</label><select name="self_score" id="selfScore"><option value="">Brez ocene / nisem mogla oceniti</option><option value="0">0 – še ni bilo vidno</option><option value="1">1 – delno / ob usmerjanju</option><option value="2">2 – večkrat samostojno v igri</option></select></div>
+<div class="field full"><label for="selfFocus">Moja naloga / fokus</label><textarea name="focus" id="selfFocus" required maxlength="2000"></textarea></div>
+<div class="field full"><label for="selfExample">Moj primer iz treninga: kaj sem videla in naredila?</label><textarea name="example" id="selfExample" maxlength="10000" placeholder="Vaja ali situacija – kaj sem opazila – kaj sem naredila."></textarea></div>
+<div class="field full"><label for="selfNext">Kaj bom poskusila naslednjič?</label><textarea name="next_goal" id="selfNext" maxlength="2000"></textarea></div>
+<div id="selfError" class="full msg bad hidden" role="alert"></div>
+<div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary" id="saveSelf">Shrani mojo samooceno</button></div>
+</form></div></div>
+
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SB_URL='https://chkzewdrkzjmblbrzkyy.supabase.co';
 const SB_KEY='sb_publishable_G2bhNT5Z0F2y7KaHfuvk0Q_yX0YH6Ch';
 const sb=createClient(SB_URL,SB_KEY);
-let signup=false, session=null, me=null, data={clubs:[],profiles:[],players:[],trainings:[],documents:[],observations:[],reviews:[],records:[],audit:[],materials:[]};
+let signup=false, session=null, me=null, data={clubs:[],profiles:[],players:[],trainings:[],documents:[],observations:[],reviews:[],records:[],audit:[],materials:[],selfAssessments:[],selfQuestions:[],selfSources:[],accounts:[]};
 let view='dashboard', selectedPlayer=null, selectedTraining=null, deletingTraining=false;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -195,7 +213,8 @@ async function boot(s){
     $('#authScreen').innerHTML='<div class="authbox"><div class="row"><div class="logo">IDP</div><div><h1>DNO IDP HUB</h1><div class="small muted">'+esc(me.full_name)+'</div></div></div><div class="msg">Tvoj račun je ustvarjen in čaka na odobritev administratorja. Ko ti določi vlogo, se ponovno prijavi.</div><button class="btn" id="pendingLogout" style="width:100%;margin-top:12px">Odjava</button></div>';
     $('#pendingLogout').onclick=async()=>{await sb.auth.signOut();location.reload()};return;
   }
-  $('#authScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#userName').textContent=me.full_name||me.email;$('#userRole').textContent=roleLabel(me.role);$('#usersNav').classList.toggle('hidden',me.role!=='admin');$('#materialsNav').classList.toggle('hidden',!canInternal());
+  $('#authScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#userName').textContent=me.full_name||me.email;$('#userRole').textContent=roleLabel(me.role);$('#usersNav').classList.toggle('hidden',me.role!=='admin');$('#materialsNav').classList.toggle('hidden',!canInternal());$('#nav [data-view="reflections"]').classList.toggle('hidden',!canInternal()&&me.role!=='player');
+  if(me.role==='player'){$$('#nav [data-view]').forEach(b=>b.classList.toggle('hidden',!['dashboard','trainings','reflections'].includes(b.dataset.view)));$('#nav [data-view="dashboard"]').textContent='Moj IDP'}
   await loadAll(true);
 }
 async function loadAll(show=true){
@@ -207,17 +226,21 @@ async function loadAll(show=true){
     sb.from('observations').select('*').order('created_at',{ascending:false}),
     sb.from('monthly_reviews').select('*').order('month',{ascending:false}),
     sb.from('player_records').select('*').order('record_date',{ascending:false}),
-    sb.from('profiles').select('*').order('full_name')
+    sb.from('profiles').select('*').order('full_name'),
+    sb.from('player_self_assessments').select('*').order('session_date',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}),
+    sb.from('self_assessment_questions').select('*').order('sort_order'),
+    sb.from('self_assessment_sources').select('*'),
+    sb.from('player_accounts').select('*')
   ];
   const res=await Promise.all(common);
   if(res.some(r=>r.error)){$('#content').innerHTML='<div class="card msg bad">Podatkov ni bilo mogoče osvežiti. Klikni ↻ in poskusi znova.</div>';return}
-  const keys=['clubs','players','trainings','observations','reviews','records','profiles']; keys.forEach((k,i)=>data[k]=res[i].data||[]);
+  const keys=['clubs','players','trainings','observations','reviews','records','profiles','selfAssessments','selfQuestions','selfSources','accounts']; keys.forEach((k,i)=>data[k]=res[i].data||[]);
   if(canInternal()){const a=await sb.from('audit_log').select('*').order('changed_at',{ascending:false}).limit(100);data.audit=a.data||[];const docs=await sb.from('training_documents').select('*').order('created_at',{ascending:false});data.documents=docs.data||[]}
   data.materials=[];window.materialsLoadError='';if(canInternal()){const m=await sb.from('drive_materials').select('*').order('folder_path').order('title');if(m.error)window.materialsLoadError='Gradiv ni bilo mogoče naložiti. Klikni ↻ in poskusi ponovno.';else data.materials=m.data||[]}
   render();
 }
 function navOn(v){$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v))}
-function render(){navOn(view); if(selectedPlayer)return renderPlayer(selectedPlayer);if(selectedTraining)return renderTraining(selectedTraining);({dashboard:renderDash,players:renderPlayers,trainings:renderTrainings,tracking:renderTracking,reviews:renderReviews,materials:renderMaterials,audit:renderAudit,users:renderUsers}[view]||renderDash)()}
+function render(){navOn(view);if(me?.role==='player'&&(!myPlayerId()||!player(myPlayerId()))){setContent('<div class="card"><h3>Račun še ni povezan z igralko</h3><p>Trenerka mora v razdelku Uporabnice povezati tvoj račun s tvojim profilom. Nato osveži stran.</p></div>');return} if(selectedPlayer)return renderPlayer(selectedPlayer);if(selectedTraining)return renderTraining(selectedTraining);({dashboard:renderDash,players:renderPlayers,trainings:renderTrainings,tracking:renderTracking,reviews:renderReviews,materials:renderMaterials,reflections:renderReflections,audit:renderAudit,users:renderUsers}[view]||renderDash)()}
 function setContent(h){$('#content').innerHTML=h}
 
 // Summaries are derived from visible observations; approved coach records stay intact.
@@ -248,7 +271,7 @@ function monthlyAnalysis(pid,month){
   const evidence=obs.map(o=>{const t=trainingMap.get(o.training_id);return dsl(t.training_date)+' · '+t.title+' · '+(o.focus||'')+'\nVedenje: '+(o.behavior||'ni opisano')+'\nOpomba: '+(o.note||'ni vnesena')+'\nOcena: '+(o.score??'ni vnesena')+' · Feedback podan: '+(o.feedback_given?'da':'ne')+(o.next_micro_focus?'\nNaslednji korak: '+o.next_micro_focus:'')}).join('\n\n');
   const lastNext=[...obs].reverse().find(o=>(o.next_micro_focus||'').trim());
   const goal=lastNext?.next_micro_focus||p?.next_micro_focus||p?.current_focus||'';
-  return {obs,trainings,tracked,progress:progress.join('\n')||'V tem mesecu še ni IDP opažanj. Napredka ni mogoče oceniti.',remaining:remaining.join('\n')||'Zberi konkreten primer vedenja glede na individualni fokus.',evidence:evidence||'Ni vnesenih dokazov iz treninga ali igre.',goal,goalSource:lastNext?'Zadnji vneseni naslednji korak ('+dsl(trainingMap.get(lastNext.training_id).training_date)+')':'Obstoječi fokus iz profila',latest:obs.reduce((max,o)=>String(o.updated_at||o.created_at||'')>max?String(o.updated_at||o.created_at):max,'')};
+  return {obs,trainings,tracked,progress:progress.join('\n')||'V tem mesecu še ni IDP opažanj. Napredka ni mogoče oceniti.',remaining:remaining.join('\n')||'Zberi konkreten primer vedenja glede na individualni fokus.',evidence:(evidence||'Ni vnesenih dokazov iz treninga ali igre.')+(selfFeedbackText(pid,month)?'\n\nSAMOOCENA IGRALKE (ločeno od trenerkine ocene):\n'+selfFeedbackText(pid,month):''),goal,goalSource:lastNext?'Zadnji vneseni naslednji korak ('+dsl(trainingMap.get(lastNext.training_id).training_date)+')':'Obstoječi fokus iz profila',latest:obs.reduce((max,o)=>String(o.updated_at||o.created_at||'')>max?String(o.updated_at||o.created_at):max,'')};
 }
 function analysisCard(pid,month){
   const a=monthlyAnalysis(pid,month),r=data.reviews.find(r=>r.player_id===pid&&r.month.startsWith(month));
@@ -259,13 +282,85 @@ function analysisCard(pid,month){
     '<div class="review-section"><b class="small">Kaj kažejo opažanja</b><div class="small analysis-text">'+esc(a.progress)+'</div></div>'+
     '<div class="review-section"><b class="small">Kaj preverimo naslednjič</b><div class="small analysis-text">'+esc(a.remaining)+'</div></div>'+
     '<div class="review-section"><b class="small">Naslednji fokus iz zapisov</b><div class="small analysis-text">'+esc(a.goal||'Še ni določen')+'</div><div class="tiny muted">'+esc(a.goalSource)+'</div></div>'+
-    '<details class="review-section"><summary class="small">Dokazi in primeri ('+a.obs.length+')</summary><div class="small analysis-text">'+esc(a.evidence)+'</div></details>'+
+    selfMonthSummary(pid,month)+'<details class="review-section"><summary class="small">Dokazi in primeri ('+a.obs.length+')</summary><div class="small analysis-text">'+esc(a.evidence)+'</div></details>'+
     (stale?'<div class="msg">Po shranjenem reviewu so bila dodana ali spremenjena opažanja. Preglej aktualni povzetek in po potrebi dopolni review.</div>':'')+
     (canInternal()?'<button class="btn primary" style="margin-top:12px" data-review-player="'+pid+'" data-review-month="'+month+'">'+(r?'Preglej in dopolni shranjeni review':'Pripravi mesečni review')+'</button>':'')+'</div>';
 }
 function bindReviewButtons(){ $$('[data-review-player]').forEach(b=>b.onclick=e=>{e.stopPropagation();openReview(b.dataset.reviewPlayer,b.dataset.reviewMonth)}) }
 
+function myPlayerId(){return data.accounts.find(a=>a.user_id===me?.id)?.player_id||null}
+function ownSelf(a){return me?.role==='player'&&a.player_id===myPlayerId()&&a.created_by===me.id&&a.source==='app'}
+function selfFeedbackText(pid,month){
+  return data.selfAssessments.filter(a=>a.player_id===pid&&a.session_date?.startsWith(month)).map(a=>dsl(a.session_date)+' · '+a.focus+'\nSamoocena: '+(a.self_score??'brez ocene')+'\nPrimer igralke: '+(a.example||'ni vnesen')+(a.next_goal?'\nNjen naslednji korak: '+a.next_goal:'')).join('\n\n');
+}
+function selfMonthSummary(pid,month){
+  const list=data.selfAssessments.filter(a=>a.player_id===pid&&a.session_date?.startsWith(month));
+  if(!list.length)return '';
+  return '<div class="review-section"><b class="small">Glas igralke · '+list.length+' samoocen</b><div class="tiny muted">Samoocena je pogled igralke; ne nadomešča trenerkine ocene.</div><details><summary class="small">Preberi njene primere in naslednje korake</summary><div class="small analysis-text">'+esc(selfFeedbackText(pid,month))+'</div></details></div>';
+}
+function selfSection(pid,tid){
+  if(!canInternal()&&me.role!=='player')return '';
+  const list=data.selfAssessments.filter(a=>(!pid||a.player_id===pid)&&(!tid||a.training_id===tid));
+  const source=pid?data.selfSources.find(x=>x.player_id===pid):null;
+  return '<div class="card" style="margin-top:14px"><div class="row between wrap"><h3>'+(me.role==='player'?'Moje samoocene':'Samoocene igralk')+'</h3>'+(me.role==='player'&&(!tid||tr(tid)?.training_date<=localToday())?'<button class="btn primary" data-self-new="'+(tid||'')+'">+ Moja samoocena</button>':'')+'</div><p class="small muted">Samoocena igralke je ločena od opažanja in ocene trenerke. Prazno ne pomeni ocene 0.</p>'+
+  (source?'<a class="btn" target="_blank" rel="noopener noreferrer" href="'+esc(source.url)+'">Prejšnja tabela v Drivu ↗</a><div class="tiny muted" style="margin-top:6px">Nove samoocene vpisujemo neposredno v aplikaciji.</div>':'')+
+  (window.selfSaveNotice?'<div class="msg ok" role="status">'+esc(window.selfSaveNotice)+'</div>':'')+
+  '<div class="list" style="margin-top:12px">'+list.map(a=>'<article class="item" style="align-items:flex-start;flex-wrap:wrap"><div>'+(a.self_score===null?'<span class="chip">Brez ocene</span>':score(a.self_score))+'</div><div class="grow" style="min-width:170px"><b class="small">'+esc(player(a.player_id)?.full_name||'Igralka')+' · '+esc(a.focus)+'</b><div class="tiny muted">'+(a.session_date?dsl(a.session_date):esc(a.period_label||'Datum ni naveden'))+' · '+esc(a.area)+' · '+(a.source==='app'?'Vnos igralke':'Arhiv iz Driva')+'</div>'+(a.training_id&&tr(a.training_id)?'<a class="small" href="#" data-training="'+a.training_id+'">'+esc(tr(a.training_id).title)+'</a>':'')+(a.question?'<div class="small muted" style="margin-top:6px">'+esc(a.question)+'</div>':'')+'<div class="small analysis-text" style="margin-top:6px"><b>Njen primer:</b> '+esc(a.example||'Ni vnesen')+'</div><div class="small analysis-text"><b>Njen naslednji korak:</b> '+esc(a.next_goal||'Ni vnesen')+'</div><div class="tiny muted">Shranjeno: '+ts(a.updated_at)+'</div></div>'+(ownSelf(a)&&a.training_id?'<button class="btn" data-self-edit="'+a.id+'">Uredi mojo samooceno</button>':'')+'</article>').join('')+(list.length?'':'<div class="small muted">Samoocena še ni vnesena.</div>')+'</div></div>';
+}
+function renderMyPlayer(id){
+  const p=player(id);if(!p)return;
+  setContent('<div class="hero"><h1>'+esc(p.full_name)+'</h1><p>Moj IDP · moj razvoj · moji primeri iz igre</p></div><div class="grid g2"><div class="card"><h3>Moj trenutni fokus</h3><div class="analysis-text">'+esc(p.current_focus||'Dogovoriva se s trenerko.')+'</div><h4>Naslednji korak</h4><div class="analysis-text">'+esc(p.next_micro_focus||'—')+'</div><div class="msg">'+esc(p.coaching_cue||'Izberi en fokus in opiši konkreten primer iz treninga.')+'</div></div><div class="card"><h3>Moj 4-tedenski načrt</h3>'+(p.four_week_plan||[]).map((w,i)=>'<div class="week" style="margin-bottom:8px"><b>Teden '+(i+1)+'</b>'+esc(w)+'</div>').join('')+'<button class="btn" data-go="trainings">Odpri treninge</button></div></div>'+selfSection(id,null));bindCommon();
+}
+function renderMyTrainings(){
+  setContent('<div class="head"><div><h2>Treningi in moje samoocene</h2><div class="small muted">Po treningu izberi svoj fokus ter opiši, kaj si videla in naredila.</div></div></div><div class="list">'+data.trainings.map(t=>'<div class="item click" data-training="'+t.id+'"><div class="grow"><b>'+esc(t.title)+'</b><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+'</div></div><span class="chip">'+(t.training_date>localToday()?'Načrt':data.selfAssessments.filter(a=>a.training_id===t.id&&a.player_id===myPlayerId()).length+' mojih samoocen')+'</span></div>').join('')+'</div>');bindCommon();
+}
+function renderMyTraining(id){
+  const t=tr(id);if(!t)return;
+  setContent('<div class="head"><div><button class="btn" data-back="trainings">← Treningi</button><h2>'+esc(t.title)+'</h2><div class="muted small">'+dsl(t.training_date)+'</div></div></div><div class="card"><h3>Cilj treninga</h3><div class="analysis-text">'+esc(t.purpose||'Cilj preveri s trenerko.')+'</div>'+(t.training_date>localToday()?'<p class="small muted">Samooceno bo mogoče oddati na dan treninga ali pozneje.</p>':'')+'</div>'+selfSection(myPlayerId(),id));bindCommon();
+}
+function renderReflections(){
+  if(me.role==='player'){setContent('<h2>Moje samoocene</h2>'+selfSection(myPlayerId(),null));bindCommon();return}
+  if(!canInternal()){setContent('<div class="card">Samoocene so dostopne igralki in DNO trenerkam.</div>');return}
+  setContent('<div class="head"><div><h2>Samoocene igralk</h2><div class="small muted">Vsaka igralka vpisuje svoj pogled. Primerjaj ga s konkretnimi opažanji trenerke.</div></div><select id="selfPlayerFilter" aria-label="Igralka"><option value="">Vse igralke</option>'+data.players.map(p=>'<option value="'+p.id+'" '+(window.selfPlayerFilter===p.id?'selected':'')+'>'+esc(p.full_name)+'</option>').join('')+'</select></div>'+selfSection(window.selfPlayerFilter||null,null));$('#selfPlayerFilter').onchange=e=>{window.selfPlayerFilter=e.target.value;renderReflections()};bindCommon();
+}
+function applySelfQuestion(){
+  const f=$('#selfForm').elements,q=data.selfQuestions.find(q=>q.id===f.question_id.value);
+  if(q){f.area.value=q.area;f.question.value=q.question;f.focus.value=q.focus}
+}
+function openSelf(tid,id){
+  if(me.role!=='player')return;
+  const pid=myPlayerId(),p=player(pid),a=id?data.selfAssessments.find(a=>a.id===id):null;
+  if(!p||(id&&(!a||!ownSelf(a)||!a.training_id)))return;
+  const eligible=data.trainings.filter(t=>t.training_date<=localToday());if(!eligible.length)return alert('Za samooceno še ni dostopnega treninga.');
+  const form=$('#selfForm'),f=form.elements;form.reset();$('#selfError').classList.add('hidden');
+  f.assessment_id.value=id||'';f.version.value=a?.updated_at||'';
+  f.training_id.innerHTML=eligible.map(t=>'<option value="'+t.id+'">'+dsl(t.training_date)+' · '+esc(t.title)+'</option>').join('');f.training_id.value=a?.training_id||tid||eligible[0].id;f.training_id.disabled=!!a;
+  const qs=data.selfQuestions.filter(q=>q.player_id===pid);f.question_id.innerHTML='<option value="">Moj lastni fokus / vprašanje</option>'+qs.map(q=>'<option value="'+q.id+'">'+esc(q.area)+' · '+esc(q.question)+'</option>').join('');
+  if(a){const q=qs.find(q=>q.question===a.question&&q.area===a.area);f.question_id.value=q?.id||'';for(const key of ['area','question','focus','example','next_goal'])f[key].value=a[key]||'';f.self_score.value=a.self_score??''}
+  else if(qs.length){f.question_id.value=qs[0].id;applySelfQuestion()}
+  else{f.focus.value=p.current_focus||'';f.area.value=(p.primary_groups||[]).join(' + ')}
+  openM('selfModal');
+}
+$('#selfForm').elements.question_id.onchange=applySelfQuestion;
+$('#selfForm').onsubmit=async e=>{
+  e.preventDefault();if(me.role!=='player')return;
+  const f=e.target.elements,pid=myPlayerId(),id=f.assessment_id.value,button=$('#saveSelf');
+  const existing=id?data.selfAssessments.find(a=>a.id===id):null;
+  if(!pid||(id&&(!existing||!ownSelf(existing))))return;
+  const obj={area:f.area.value.trim(),question:f.question.value.trim(),focus:f.focus.value.trim(),self_score:f.self_score.value===''?null:Number(f.self_score.value),example:f.example.value.trim(),next_goal:f.next_goal.value.trim()};
+  const showError=message=>{$('#selfError').textContent=message;$('#selfError').classList.remove('hidden')};
+  if(!obj.focus)return showError('Vpiši svoj fokus.');if(obj.self_score===null&&!obj.example)return showError('Dodaj primer iz treninga ali samooceno.');
+  const t=tr(f.training_id.value);if(!t||t.training_date>localToday())return showError('Izberi trening do današnjega dne.');
+  button.disabled=true;button.textContent='Shranjujem …';
+  try{
+    const q=id?sb.from('player_self_assessments').update(obj).eq('id',id).eq('player_id',pid).eq('created_by',me.id).eq('updated_at',f.version.value).select('id').maybeSingle():sb.from('player_self_assessments').insert({...obj,player_id:pid,training_id:t.id,created_by:me.id,source:'app'}).select('id').single();
+    const result=await q;if(result.error)throw new Error(result.error.code==='23505'?'Za ta fokus že imaš samooceno. Odpri jo in izberi Uredi mojo samooceno.':result.error.message);if(!result.data)throw new Error('Zapis se je medtem spremenil. Zapri obrazec, osveži in ga ponovno odpri.');
+    window.selfSaveNotice='Tvoja samoocena je shranjena in je vidna DNO trenerkam.';closeM($('#selfModal .x'));await loadAll(false);
+  }catch(error){showError(error.message)}finally{button.disabled=false;button.textContent='Shrani mojo samooceno'}
+};
+
 function renderDash(){
+  if(me.role==='player')return renderMyPlayer(myPlayerId());
   let obs=data.observations.slice(0,6);
   setContent('<div class="hero"><h1>En sistem za celoten IDP proces.</h1><p>Igralka ↔ trening ↔ opažanje ↔ mesečni review ↔ naslednji fokus. Vsi pooblaščeni trenerji delajo v isti bazi.</p></div>'+
   '<div class="grid g4">'+
@@ -280,13 +375,14 @@ function renderPlayers(){
   bindCommon();if($('#newPlayer'))$('#newPlayer').onclick=()=>openPlayer();
 }
 function renderPlayer(id){
+  if(me.role==='player')return renderMyPlayer(myPlayerId());
   let p=player(id);if(!p)return;const analysisMonth=window.playerAnalysisMonth||localToday().slice(0,7);let obs=data.observations.filter(x=>x.player_id===id),revs=data.reviews.filter(x=>x.player_id===id),recs=data.records.filter(x=>x.player_id===id);
   setContent('<div class="head"><div><button class="btn" data-back="players">← Igralke</button><h2>'+esc(p.full_name)+'</h2><div class="small muted">'+esc(club(p.club_id)?.name||'')+'</div>'+audit(p)+'</div><div class="toolbar">'+(canInternal()?'<button class="btn" id="editPlayer">Uredi cel profil</button>':'')+(canObserve()?'<button class="btn" id="newRecord">+ Nov zapis</button><button class="btn primary" id="newPlayerObs">+ Opažanje</button>':'')+'</div></div>'+
   '<div class="grid g2"><div class="card"><h3>Aktualni IDP</h3>'+
   fieldBlock('Glavni IDP fokus',p.current_focus,'current_focus')+fieldBlock('Naslednji mikro fokus',p.next_micro_focus,'next_micro_focus')+fieldBlock('Coaching cue',p.coaching_cue,'coaching_cue')+
   '<div style="margin-top:12px"><div class="tiny muted">IDP SKUPINE '+(canInternal()?'<button class="edit" data-qedit="primary_groups">✎</button>':'')+'</div><div class="chips">'+chips(p.primary_groups)+'</div></div></div>'+
   '<div class="card"><h3>4-tedenski fokus</h3><div class="weekgrid">'+(p.four_week_plan||[]).map((w,i)=>'<div class="week"><b>TEDEN '+(i+1)+'</b><div class="small">'+esc(w)+'</div></div>').join('')+'</div></div></div>'+
-  '<div class="row wrap" style="margin-top:14px"><label class="small" for="playerAnalysisMonth">Mesec analize</label><select id="playerAnalysisMonth">'+analysisMonths().map(m=>'<option value="'+m+'" '+(m===analysisMonth?'selected':'')+'>'+esc(monthName(m+'-01'))+'</option>').join('')+'</select></div>'+analysisCard(id,analysisMonth)+
+  '<div class="row wrap" style="margin-top:14px"><label class="small" for="playerAnalysisMonth">Mesec analize</label><select id="playerAnalysisMonth">'+analysisMonths().map(m=>'<option value="'+m+'" '+(m===analysisMonth?'selected':'')+'>'+esc(monthName(m+'-01'))+'</option>').join('')+'</select></div>'+analysisCard(id,analysisMonth)+selfSection(id,null)+
   '<div class="card" style="margin-top:14px"><h3>Trening spremljanje</h3><div class="table"><table><thead><tr><th>Datum</th><th>Trening</th><th>Skupina</th><th>Fokus</th><th>Ocena</th><th>Opomba</th><th>Naslednji mikro fokus</th><th>Uredila</th></tr></thead><tbody>'+obs.map(o=>{let t=tr(o.training_id),u=prof(o.updated_by);return '<tr><td>'+dsl(t?.training_date)+'</td><td><a href="#" data-training="'+o.training_id+'">'+esc(t?.title||'')+'</a></td><td>'+esc(o.idp_group)+'</td><td>'+esc(o.focus)+'</td><td>'+score(o.score)+(canObserve()?'<button class="edit" aria-label="Uredi opažanje" data-edit-observation="'+o.id+'">✎</button>':'')+'</td><td>'+esc(o.note||'')+'</td><td>'+esc(o.next_micro_focus||'')+'</td><td>'+esc(u?.full_name||'Začetni vnos')+'<br><span class="tiny muted">'+ts(o.updated_at)+'</span></td></tr>'}).join('')+'</tbody></table></div></div>'+
   '<div class="grid g2" style="margin-top:14px"><div class="card"><h3>Zapisi</h3><div class="list">'+recs.map(r=>'<div class="item"><div class="grow"><b class="small">'+esc(r.title||r.record_type)+'</b><div class="tiny muted">'+dsl(r.record_date)+' · '+esc(r.record_type)+'</div><div class="small">'+esc(r.body)+'</div>'+audit(r)+'</div></div>').join('')+'</div></div>'+
   '<div class="card"><div class="row between"><h3>Mesečni review</h3>'+(canInternal()?'<button class="btn" id="newReviewP">+ Review</button>':'')+'</div>'+revs.map(r=>'<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>'+esc(monthName(r.month))+'</b><div class="small"><b>Napredek:</b> '+esc(r.progress||'')+'</div><div class="small"><b>Naslednji cilj:</b> '+esc(r.next_four_week_goal||'')+'</div>'+audit(r)+'</div>').join('')+'</div></div>');
@@ -301,16 +397,18 @@ function renderPlayer(id){
 function fieldBlock(label,val,field){return '<div style="margin-top:12px"><div class="tiny muted">'+label.toUpperCase()+' '+(canInternal()?'<button class="edit" data-qedit="'+field+'">✎</button>':'')+'</div><div class="small">'+esc(val||'—')+'</div></div>'}
 
 function renderTrainings(){
+  if(me.role==='player')return renderMyTrainings();
   const notice=window.trainingDeleteNotice||'';window.trainingDeleteNotice='';
   setContent((notice?'<div class="msg ok" role="status" style="margin-bottom:12px">'+esc(notice)+'</div>':'')+'<div class="head"><div><h2>Treningi</h2><div class="small muted">En vnos treninga, nanj pa so vezana vsa IDP opažanja.</div></div><div class="toolbar">'+(canInternal()?'<button class="btn primary" id="newTraining">+ Nov trening</button>':'')+'</div></div><div class="list">'+data.trainings.map(t=>'<div class="item click" data-training="'+t.id+'"><div class="grow"><b>'+esc(t.title)+'</b><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+' · '+esc(t.method||'')+'</div><div class="chips" style="margin-top:5px">'+chips(t.idp_areas)+'</div>'+audit(t)+'</div><div class="small muted">'+data.observations.filter(o=>o.training_id===t.id).length+' opaž.</div>'+(canInternal()?'<button class="btn danger" data-delete-training="'+t.id+'">Izbriši trening</button>':'')+'</div>').join('')+'</div>');
   bindCommon();if($('#newTraining'))$('#newTraining').onclick=()=>openTraining();
 }
 async function renderTraining(id){
+  if(me.role==='player')return renderMyTraining(id);
   let t=tr(id);if(!t)return;let obs=data.observations.filter(x=>x.training_id===id),docs=data.documents.filter(x=>x.training_id===id);
   setContent('<div class="head"><div><button class="btn" data-back="trainings">← Treningi</button><h2>'+esc(t.title)+'</h2><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+'</div>'+audit(t)+'</div><div class="toolbar">'+(canInternal()?'<button class="btn" id="editTraining">Uredi trening</button><button class="btn danger" data-delete-training="'+id+'">Izbriši trening</button>':'')+(canObserve()?'<button class="btn primary" id="newObsT">+ IDP opažanje</button>':'')+'</div></div>'+
   '<div class="grid g2"><div class="card"><h3>Vsebina</h3><div class="small"><b>Namen:</b> '+esc(t.purpose||'—')+'<br><b>Metoda:</b> '+esc(t.method||'—')+'</div><div class="small training-notes">'+esc(t.notes||'—')+'</div><div class="chips" style="margin-top:10px">'+chips(t.idp_areas)+'</div></div>'+
   '<div class="card"><h3>Dokumenti in povezave</h3><div class="small"><b>Video:</b> '+(t.video_url?'<a target="_blank" href="'+esc(t.video_url)+'">odpri</a>':'—')+'<br><b>Druga povezava:</b> '+(t.document_url?'<a target="_blank" href="'+esc(t.document_url)+'">odpri</a>':'—')+'</div><div id="docs" style="margin-top:10px">'+docs.map(d=>'<div class="item"><div class="grow"><b class="small">Word: '+esc(d.file_name)+'</b><div class="tiny muted">'+Math.round((d.size_bytes||0)/1024)+' KB</div></div><button class="btn" data-doc="'+d.id+'">Odpri</button></div>').join('')+'</div></div></div>'+
-  '<div class="card" style="margin-top:14px"><h3>IDP spremljanje</h3><div class="table"><table><thead><tr><th>Igralka</th><th>Skupina</th><th>Fokus</th><th>Vedenje</th><th>Ocena</th><th>Opomba</th><th>Mikro fokus</th><th>Uredila</th></tr></thead><tbody>'+obs.map(o=>{let p=player(o.player_id),u=prof(o.updated_by);return '<tr><td><a href="#" data-player="'+o.player_id+'">'+esc(p?.full_name||'')+'</a></td><td>'+esc(o.idp_group)+'</td><td>'+esc(o.focus)+'</td><td>'+esc(o.behavior)+'</td><td>'+score(o.score)+(canObserve()?'<button class="edit" aria-label="Uredi opažanje" data-edit-observation="'+o.id+'">✎</button>':'')+'</td><td>'+esc(o.note||'')+'</td><td>'+esc(o.next_micro_focus||'')+'</td><td>'+esc(u?.full_name||'Začetni vnos')+'<br><span class="tiny muted">'+ts(o.updated_at)+'</span></td></tr>'}).join('')+(obs.length?'':'<tr><td colspan="8" class="muted">IDP spremljanje še ni vneseno. Trening je shranjen; odsotnost opažanj ne pomeni ocene 0.</td></tr>')+'</tbody></table></div></div>');
+  '<div class="card" style="margin-top:14px"><h3>IDP spremljanje</h3><div class="table"><table><thead><tr><th>Igralka</th><th>Skupina</th><th>Fokus</th><th>Vedenje</th><th>Ocena</th><th>Opomba</th><th>Mikro fokus</th><th>Uredila</th></tr></thead><tbody>'+obs.map(o=>{let p=player(o.player_id),u=prof(o.updated_by);return '<tr><td><a href="#" data-player="'+o.player_id+'">'+esc(p?.full_name||'')+'</a></td><td>'+esc(o.idp_group)+'</td><td>'+esc(o.focus)+'</td><td>'+esc(o.behavior)+'</td><td>'+score(o.score)+(canObserve()?'<button class="edit" aria-label="Uredi opažanje" data-edit-observation="'+o.id+'">✎</button>':'')+'</td><td>'+esc(o.note||'')+'</td><td>'+esc(o.next_micro_focus||'')+'</td><td>'+esc(u?.full_name||'Začetni vnos')+'<br><span class="tiny muted">'+ts(o.updated_at)+'</span></td></tr>'}).join('')+(obs.length?'':'<tr><td colspan="8" class="muted">IDP spremljanje še ni vneseno. Trening je shranjen; odsotnost opažanj ne pomeni ocene 0.</td></tr>')+'</tbody></table></div></div>'+selfSection(null,id));
   bindCommon();if($('#editTraining'))$('#editTraining').onclick=()=>openTraining(id);if($('#newObsT'))$('#newObsT').onclick=()=>openObs(id);
   $$('[data-doc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.doc));
 }
@@ -358,11 +456,13 @@ function renderAudit(){
 function renderUsers(){
   if(me.role!=='admin'){setContent('<div class="card">Samo administrator lahko ureja uporabnice.</div>');return}
   const notice=window.userSaveNotice||'';window.userSaveNotice='';
-  setContent('<div class="head"><div><h2>Uporabnice</h2><div class="small muted">Odobri trenerke in določi njihovo vlogo ter klub.</div></div></div>'+(notice?'<div class="msg ok" style="margin-bottom:12px">'+esc(notice)+'</div>':'')+'<div class="table"><table><thead><tr><th>Ime</th><th>E-pošta</th><th>Vloga</th><th>Klub</th><th>Status</th><th></th></tr></thead><tbody>'+data.profiles.map(p=>'<tr><td>'+esc(p.full_name||'')+'</td><td>'+esc(p.email||'')+'</td><td><select data-role="'+p.id+'">'+['pending','admin','dno_coach','club_coach','analyst','player'].map(r=>'<option value="'+r+'" '+(r===p.role?'selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select></td><td><select data-club="'+p.id+'"><option value="">—</option>'+data.clubs.map(c=>'<option value="'+c.id+'" '+(c.id===p.club_id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></td><td>'+(p.role==='pending'?'Čaka na odobritev':(p.active?'Odobrena':'Neaktivna'))+'</td><td><button type="button" class="btn primary" data-save-user="'+p.id+'">Shrani</button></td></tr>').join('')+'</tbody></table></div>');
-  $('[data-save-user]').forEach(b=>b.onclick=async()=>{
+  setContent('<div class="head"><div><h2>Uporabnice</h2><div class="small muted">Odobri trenerke in določi njihovo vlogo ter klub.</div></div></div>'+(notice?'<div class="msg ok" style="margin-bottom:12px">'+esc(notice)+'</div>':'')+'<div class="table"><table><thead><tr><th>Ime</th><th>E-pošta</th><th>Vloga</th><th>Klub</th><th>Povezani profil igralke</th><th>Status</th><th></th></tr></thead><tbody>'+data.profiles.map(p=>'<tr><td>'+esc(p.full_name||'')+'</td><td>'+esc(p.email||'')+'</td><td><select data-role="'+p.id+'">'+['pending','admin','dno_coach','club_coach','analyst','player'].map(r=>'<option value="'+r+'" '+(r===p.role?'selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select></td><td><select data-club="'+p.id+'"><option value="">—</option>'+data.clubs.map(c=>'<option value="'+c.id+'" '+(c.id===p.club_id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></td><td><select data-account-player="'+p.id+'"><option value="">— izberi za vlogo Igralka —</option>'+data.players.map(pl=>'<option value="'+pl.id+'" '+(data.accounts.some(a=>a.user_id===p.id&&a.player_id===pl.id)?'selected':'')+'>'+esc(pl.full_name)+'</option>').join('')+'</select></td><td>'+(p.role==='pending'?'Čaka na odobritev':(p.active?'Odobrena':'Neaktivna'))+'</td><td><button type="button" class="btn primary" data-save-user="'+p.id+'">Shrani</button></td></tr>').join('')+'</tbody></table></div>');
+  $$('[data-save-user]').forEach(b=>b.onclick=async()=>{
     let id=b.dataset.saveUser,role=$('[data-role="'+id+'"]').value,club_id=$('[data-club="'+id+'"]').value||null;
     const oldText=b.textContent;b.disabled=true;b.textContent='Shranjujem …';
-    const {data:saved,error}=await sb.from('profiles').update({role,club_id}).eq('id',id).select('id,role,club_id').maybeSingle();
+    let saved,error;
+    if(role==='player'){const pid=$('[data-account-player="'+id+'"]').value;if(!pid){b.disabled=false;b.textContent=oldText;return alert('Za vlogo Igralka izberi njen profil.')}const result=await sb.rpc('assign_player_account',{target_user:id,target_player:pid});error=result.error;saved=result.data;}
+    else{const result=await sb.from('profiles').update({role,club_id}).eq('id',id).select('id,role,club_id').maybeSingle();saved=result.data;error=result.error;}
     if(error){b.disabled=false;b.textContent=oldText;return alert('Shranjevanje ni uspelo: '+error.message)}
     if(!saved){b.disabled=false;b.textContent=oldText;return alert('Sprememba ni bila shranjena. Osveži stran in poskusi ponovno.')}
     window.userSaveNotice=role==='pending'?'Uporabnica je ponovno nastavljena na čakanje.':'Uporabnica je odobrena. Spremembe so shranjene.';
@@ -371,6 +471,8 @@ function renderUsers(){
 }
 
 function bindCommon(){
+  $$('[data-self-new]').forEach(b=>b.onclick=()=>openSelf(b.dataset.selfNew||null));
+  $$('[data-self-edit]').forEach(b=>b.onclick=()=>openSelf(null,b.dataset.selfEdit));
   $$('[data-delete-training]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();deleteTraining(b.dataset.deleteTraining,b)});
   $$('[data-edit-observation]').forEach(b=>b.onclick=e=>{e.stopPropagation();const o=data.observations.find(o=>o.id===b.dataset.editObservation);if(o)openObs(o.training_id,o.player_id,o.id)});
   $$('[data-player]').forEach(x=>x.onclick=e=>{e.preventDefault();selectedPlayer=x.dataset.player;selectedTraining=null;renderPlayer(selectedPlayer)});
@@ -399,7 +501,7 @@ async function deleteTraining(id,button){
     ]);
     if(obsResult.error||docsResult.error)throw new Error('Povezanih zapisov ni bilo mogoče preveriti. Poskusi ponovno.');
     const docs=docsResult.data||[];
-    const message='Trajno izbrišem trening »'+t.title+'« ('+dsl(t.training_date)+')?\n\nIzbrisana bodo tudi vsa povezana IDP opažanja (trenutno '+(obsResult.count||0)+') in priloge (trenutno '+docs.length+'). Sprotne analize bodo preračunane. Shranjeni mesečni reviewi in zapisi igralk ostanejo; po potrebi jih preglej.\n\nIzbrisa ni mogoče razveljaviti.';
+    const message='Trajno izbrišem trening »'+t.title+'« ('+dsl(t.training_date)+')?\n\nIzbrisana bodo tudi vsa povezana IDP opažanja (trenutno '+(obsResult.count||0)+') in priloge (trenutno '+docs.length+'). Sprotne analize bodo preračunane. Samoocene igralk ostanejo v njihovih profilih. Shranjeni mesečni reviewi in zapisi igralk ostanejo; po potrebi jih preglej.\n\nIzbrisa ni mogoče razveljaviti.';
     if(!confirm(message))return;
     button.textContent='Brišem …';
     const result=await sb.from('trainings').delete().eq('id',id).select('id');
@@ -439,7 +541,7 @@ function populateReview(useDraft=false){
   f.remaining.value=useDraft||!r?a.remaining:r.remaining||'';
   f.evidence.value=useDraft||!r?a.evidence:r.evidence||'';
   f.next_four_week_goal.value=useDraft||!r?a.goal:r.next_four_week_goal||'';
-  if(!useDraft)f.player_feedback.value=r?.player_feedback||'';
+  if(!useDraft)f.player_feedback.value=r?.player_feedback||(r?'':selfFeedbackText(pid,month));
   $('#reviewSource').textContent=(useDraft||!r?'Samodejni osnutek iz '+a.obs.length+' opažanj. Preglej in dopolni pred shranjevanjem.':'Naložen obstoječi review trenerke. Aktualni povzetek lahko vstaviš spodaj.')+' Feedback igralke vpiši iz njenega dejanskega odziva.';
 }
 function openReview(pid,month){let f=$('#reviewForm');f.reset();fillPlayerSel(f.player_id,pid);f.month.value=month||localToday().slice(0,7);populateReview();openM('reviewModal')}
