@@ -61,6 +61,7 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
     <button data-view="players">Igralke</button>
     <button data-view="trainings">Treningi</button>
     <button data-view="tracking">Mesečno spremljanje</button>
+    <button data-view="contents" id="contentsNav" class="hidden">Analiza vsebin</button>
     <button data-view="reviews">Mesečni review</button>
     <button data-view="reflections">Samoocene</button>
     <button data-view="materials" id="materialsNav" class="hidden">Gradiva</button>
@@ -155,12 +156,27 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
 <div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary" id="saveSelf">Shrani mojo samooceno</button></div>
 </form></div></div>
 
+<div class="modal" id="drillModal"><div class="modalbox">
+<div class="row between"><h3>Vaja in vsebinski cilj</h3><button class="x" data-close>×</button></div>
+<form id="drillForm" class="form"><input type="hidden" name="id">
+<div class="field"><label>Datum treninga</label><input name="session_date" type="date"></div><div class="field"><label>Oznaka treninga</label><input name="session_label" placeholder="Npr. DNO 24"></div>
+<div class="field full"><label>Naslov vaje</label><input name="title" required></div>
+<div class="field"><label>Del treninga</label><select name="part"><option>Uvodni del</option><option selected>Glavni del</option><option>Zaključni del</option></select></div><div class="field"><label>Zaporedje v treningu</label><input type="number" name="sort_order" min="0" step="1"></div>
+<div class="field"><label>Glavna vsebina</label><input name="content" list="contentOptions" required><datalist id="contentOptions"></datalist></div><div class="field"><label>Faza igre</label><select name="phase"><option>Napadanje</option><option>Branjenje</option><option>Napadanje in branjenje</option><option>Prehod po osvojitvi</option><option>Prehod po izgubi</option><option>Telesna priprava</option><option>Ni opredeljena</option></select></div>
+<div class="field full"><label>Glavni cilj</label><input name="goal" list="goalOptions" required><datalist id="goalOptions"></datalist></div><div class="field full"><label>Podporni cilji – vsak v svoji vrstici</label><textarea name="support_goals" rows="3"></textarea></div>
+<div class="field"><label>Raven</label><select name="level"><option>Individualno</option><option>Sodelovanje</option><option>Ekipno</option><option>Ni opredeljeno</option></select></div><div class="field"><label>Status izvedbe</label><select name="status"><option value="planned">Priprava – izvedba nepotrjena</option><option value="completed">Potrjeno izvedeno</option><option value="skipped">Izpuščeno – NISMO</option></select></div>
+<div class="field"><label>Načrtovano trajanje – od (min)</label><input name="planned_minutes" type="number" min="0" step="0.5"></div><div class="field"><label>Načrtovano trajanje – do (min, če je razpon)</label><input name="planned_max_minutes" type="number" min="0" step="0.5"></div>
+<div class="field"><label>Dejansko trajanje (min)</label><input name="actual_minutes" type="number" min="0.5" step="0.5"></div><div class="field"><label><input type="checkbox" name="classification_confirmed"> Potrjujem razvrstitev vsebine in ciljev</label></div>
+<div class="field full"><label>Opis vaje</label><textarea name="description"></textarea></div><div class="field full"><label>Trenerjevi poudarki</label><textarea name="coaching_points"></textarea></div>
+<div id="drillSourceNote" class="small muted full analysis-text"></div><div id="drillFormError" class="msg bad hidden full" role="alert"></div>
+<div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary" type="submit">Shrani vajo</button></div>
+</form></div></div>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SB_URL='https://chkzewdrkzjmblbrzkyy.supabase.co';
 const SB_KEY='sb_publishable_G2bhNT5Z0F2y7KaHfuvk0Q_yX0YH6Ch';
 const sb=createClient(SB_URL,SB_KEY);
-let signup=false, session=null, me=null, data={clubs:[],profiles:[],players:[],trainings:[],documents:[],observations:[],reviews:[],records:[],audit:[],materials:[],selfAssessments:[],selfQuestions:[],selfSources:[],accounts:[]};
+let signup=false, session=null, me=null, data={clubs:[],profiles:[],players:[],trainings:[],documents:[],observations:[],reviews:[],records:[],audit:[],materials:[],drills:[],selfAssessments:[],selfQuestions:[],selfSources:[],accounts:[]};
 let view='dashboard', selectedPlayer=null, selectedTraining=null, deletingTraining=false;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -213,7 +229,7 @@ async function boot(s){
     $('#authScreen').innerHTML='<div class="authbox"><div class="row"><div class="logo">IDP</div><div><h1>DNO IDP PROCES</h1><div class="small muted">'+esc(me.full_name)+'</div></div></div><div class="msg">Tvoj račun je ustvarjen in čaka na odobritev administratorja. Ko ti določi vlogo, se ponovno prijavi.</div><button class="btn" id="pendingLogout" style="width:100%;margin-top:12px">Odjava</button></div>';
     $('#pendingLogout').onclick=async()=>{await sb.auth.signOut();location.reload()};return;
   }
-  $('#authScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#userName').textContent=me.full_name||me.email;$('#userRole').textContent=roleLabel(me.role);$('#usersNav').classList.toggle('hidden',me.role!=='admin');$('#materialsNav').classList.toggle('hidden',!canInternal());$('#nav [data-view="reflections"]').classList.toggle('hidden',!canInternal()&&me.role!=='player');
+  $('#authScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#userName').textContent=me.full_name||me.email;$('#userRole').textContent=roleLabel(me.role);$('#usersNav').classList.toggle('hidden',me.role!=='admin');$('#materialsNav').classList.toggle('hidden',!canInternal());$('#contentsNav').classList.toggle('hidden',!canInternal());$('#nav [data-view="reflections"]').classList.toggle('hidden',!canInternal()&&me.role!=='player');
   if(me.role==='player'){$$('#nav [data-view]').forEach(b=>b.classList.toggle('hidden',!['dashboard','trainings','reflections'].includes(b.dataset.view)));$('#nav [data-view="dashboard"]').textContent='Moj IDP'}
   await loadAll(true);
 }
@@ -237,10 +253,11 @@ async function loadAll(show=true){
   const keys=['clubs','players','trainings','observations','reviews','records','profiles','selfAssessments','selfQuestions','selfSources','accounts']; keys.forEach((k,i)=>data[k]=res[i].data||[]);
   if(canInternal()){const a=await sb.from('audit_log').select('*').order('changed_at',{ascending:false}).limit(100);data.audit=a.data||[];const docs=await sb.from('training_documents').select('*').order('created_at',{ascending:false});data.documents=docs.data||[]}
   data.materials=[];window.materialsLoadError='';if(canInternal()){const m=await sb.from('drive_materials').select('*').is('deleted_at',null).order('folder_path').order('title');if(m.error)window.materialsLoadError='Gradiv ni bilo mogoče naložiti. Klikni ↻ in poskusi ponovno.';else data.materials=m.data||[]}
+  data.drills=[];window.drillsLoadError='';if(canInternal()){const d=await sb.from('training_drills').select('*').order('session_date',{ascending:false,nullsFirst:false}).order('sort_order');if(d.error)window.drillsLoadError='Vaj ni bilo mogoče naložiti. Klikni ↻ in poskusi ponovno.';else data.drills=d.data||[]}
   render();
 }
 function navOn(v){$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v))}
-function render(){navOn(view);if(me?.role==='player'&&(!myPlayerId()||!player(myPlayerId()))){setContent('<div class="card"><h3>Račun še ni povezan z igralko</h3><p>Trenerka mora v razdelku Uporabnice povezati tvoj račun s tvojim profilom. Nato osveži stran.</p></div>');return} if(selectedPlayer)return renderPlayer(selectedPlayer);if(selectedTraining)return renderTraining(selectedTraining);({dashboard:renderDash,players:renderPlayers,trainings:renderTrainings,tracking:renderTracking,reviews:renderReviews,materials:renderMaterials,reflections:renderReflections,audit:renderAudit,users:renderUsers}[view]||renderDash)()}
+function render(){navOn(view);if(me?.role==='player'&&(!myPlayerId()||!player(myPlayerId()))){setContent('<div class="card"><h3>Račun še ni povezan z igralko</h3><p>Trenerka mora v razdelku Uporabnice povezati tvoj račun s tvojim profilom. Nato osveži stran.</p></div>');return} if(selectedPlayer)return renderPlayer(selectedPlayer);if(selectedTraining)return renderTraining(selectedTraining);({dashboard:renderDash,players:renderPlayers,trainings:renderTrainings,tracking:renderTracking,reviews:renderReviews,materials:renderMaterials,contents:renderContents,reflections:renderReflections,audit:renderAudit,users:renderUsers}[view]||renderDash)()}
 function setContent(h){$('#content').innerHTML=h}
 
 // Summaries are derived from visible observations; approved coach records stay intact.
@@ -538,6 +555,84 @@ function renderReviews(){
   if($('#reviewBack'))$('#reviewBack').onclick=()=>{window.reviewPlayer=null;renderReviews()};
   $('#reviewMonth').onchange=e=>{window.reviewMonth=e.target.value;renderReviews()};
 }
+function contentRange(preset){
+  const today=localToday(),d=new Date(today+'T12:00:00');
+  if(preset==='all')return {from:'',to:''};
+  if(preset==='week'){const day=(d.getDay()+6)%7,from=new Date(d);from.setDate(d.getDate()-day);const to=new Date(from);to.setDate(from.getDate()+6);return {from:from.toISOString().slice(0,10),to:to.toISOString().slice(0,10)}}
+  return {from:today.slice(0,7)+'-01',to:new Date(d.getFullYear(),d.getMonth()+1,0,12).toISOString().slice(0,10)};
+}
+function contentFilters(){if(!window.contentFilters)window.contentFilters={preset:'month',...contentRange('month'),content:'',goal:'',phase:'',scope:'planned'};return window.contentFilters}
+function contentRows(filters){
+  return data.drills.filter(d=>d.session_date&&(!filters.from||d.session_date>=filters.from)&&(!filters.to||d.session_date<=filters.to)&&(!filters.content||d.content===filters.content)&&(!filters.goal||d.goal===filters.goal||(d.support_goals||[]).includes(filters.goal))&&(!filters.phase||d.phase===filters.phase)&&(filters.scope!=='completed'||(d.status==='completed'&&d.session_date<=localToday())));
+}
+function contentSummary(rows,actual=false){
+  const valid=actual?rows.filter(d=>d.status==='completed'&&d.session_date&&d.session_date<=localToday()):rows;
+  let min=0,max=0,known=0;
+  for(const d of valid){const n=actual?d.actual_minutes:d.planned_minutes;if(n!==null&&n!==undefined&&n!==''&&Number.isFinite(Number(n))){min+=Number(n);max+=Number(actual?n:(d.planned_max_minutes??n));known++}}
+  return {rows:valid.length,sessions:new Set(valid.map(d=>d.session_date+'|'+d.session_label)).size,min,max,known,missing:valid.length-known};
+}
+function minuteText(a){return a.known?(a.min===a.max?String(a.min):a.min+'–'+a.max)+' min':'Trajanje ni vpisano'}
+function aggregateContents(rows,key,actual=false){
+  const groups=new Map();for(const d of rows){const label=d[key]||'Ni opredeljeno';if(!groups.has(label))groups.set(label,[]);groups.get(label).push(d)}
+  return [...groups].map(([label,items])=>({label,items,...contentSummary(items,actual)})).sort((a,b)=>b.min-a.min||b.rows-a.rows||a.label.localeCompare(b.label,'sl'));
+}
+function contentBarTable(rows,actual,key){
+  const list=aggregateContents(rows,key,actual),total=contentSummary(rows,actual),max=Math.max(1,...list.map(x=>x.max));
+  return '<div class="table"><table><thead><tr><th>'+(key==='phase'?'Faza':'Vsebina')+'</th><th>Vaje</th><th>Treningi</th><th>'+(actual?'Dejansko':'Načrtovano')+' trajanje</th><th>Delež znanih minut¹</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.label)+'</b><div style="height:7px;background:#ece5f8;border-radius:9px;margin-top:7px"><div style="height:7px;border-radius:9px;background:#7951ac;width:'+Math.round(x.max/max*100)+'%"></div></div></td><td>'+x.rows+'</td><td>'+x.sessions+'</td><td>'+minuteText(x)+(x.missing?'<div class="tiny muted">'+x.missing+' brez trajanja</div>':'')+'</td><td>'+(total.min===total.max&&total.min>0?Math.round(x.min/total.min*100)+' %':'— razpon ali neznan čas')+'</td></tr>').join('')+'</tbody></table></div><p class="tiny muted">¹ Vsaka vaja pripada eni glavni vsebini in eni fazi. Delež velja za vpisane minute, ne za celoten čas treningov. Razponov ne pretvarjamo v povprečja.</p>';
+}
+function contentGoalTable(rows,actual){
+  const goals=[...new Set(rows.flatMap(d=>[d.goal,...(d.support_goals||[])]).filter(Boolean))];
+  return '<div class="table"><table><thead><tr><th>Cilj</th><th>Glavni cilj vaje</th><th>Vključitve skupaj</th><th>Treningi</th><th>Zadnji zapis</th><th>Minute kot glavni cilj</th></tr></thead><tbody>'+goals.map(goal=>{const all=rows.filter(d=>d.goal===goal||(d.support_goals||[]).includes(goal)),main=all.filter(d=>d.goal===goal);return {goal,all,main}}).sort((a,b)=>b.all.length-a.all.length||a.goal.localeCompare(b.goal,'sl')).map(({goal,all,main})=>'<tr><td>'+esc(goal)+'</td><td>'+main.length+'</td><td>'+all.length+'</td><td>'+new Set(all.map(d=>d.session_date+'|'+d.session_label)).size+'</td><td>'+dsl(all.map(d=>d.session_date).sort().at(-1))+'</td><td>'+minuteText(contentSummary(main,actual))+'</td></tr>').join('')+'</tbody></table></div><p class="tiny muted">Podporni cilji kažejo vključitve. Njihovih minut ne prištevamo, ker se v isti vaji prepletajo. Pogostost vsebine ni dokaz napredka igralke.</p>';
+}
+function contentStatus(d){return d.status==='completed'?'Potrjeno izvedeno':d.status==='skipped'?'Izpuščeno · NISMO':d.session_date>localToday()?'Načrt':'Priprava · izvedba nepotrjena'}
+function contentDrillList(rows){
+  return rows.sort((a,b)=>String(b.session_date||'').localeCompare(String(a.session_date||''))||a.session_label.localeCompare(b.session_label,'sl')||a.sort_order-b.sort_order||a.id.localeCompare(b.id)).map(d=>'<article class="item" style="align-items:flex-start;flex-wrap:wrap"><div class="grow" style="min-width:220px"><div class="tiny muted">'+(d.session_date?dsl(d.session_date):'Datum za preverbo')+' · '+esc(d.session_label)+' · '+esc(d.part)+' · '+d.sort_order+'</div><b>'+esc(d.title)+'</b><div class="chips" style="margin-top:6px"><span class="chip">'+esc(d.content)+'</span><span class="chip">'+contentStatus(d)+'</span><span class="chip">'+(d.classification_confirmed?'Razvrstitev potrjena':'Razvrstitev: predlog')+'</span></div><p class="small"><b>Glavni cilj:</b> '+esc(d.goal||'Ni opredeljen')+'</p><div class="small">Načrt: '+minuteText(contentSummary([d]))+' · Izvedba: '+(d.status==='completed'?minuteText(contentSummary([d],true)):'ni potrjena')+'</div><details style="margin-top:8px"><summary class="small">Opis, cilji in izvor</summary><div class="small analysis-text">'+esc('Faza: '+d.phase+' · Raven: '+d.level+'\nPodporni cilji: '+((d.support_goals||[]).join('; ')||'—')+'\n\n'+d.description+'\n\n'+d.coaching_points)+'</div><h4>Izvorni cilj treninga</h4>'+reviewText(d.source_goal)+'<p class="small muted analysis-text">'+esc(d.source_note)+'</p>'+(d.source_url?'<a class="btn" target="_blank" rel="noopener noreferrer" href="'+esc(d.source_url)+'">Odpri vir ↗</a>':'')+(d.training_id&&tr(d.training_id)?' <a class="btn" href="#" data-training="'+esc(d.training_id)+'">Odpri trening in IDP spremljanje</a>':'')+'</details></div><button class="btn" data-drill-edit="'+esc(d.id)+'">Uredi / potrdi izvedbo</button></article>').join('')||'<p class="small muted">Za izbrane filtre ni vaj.</p>';
+}
+function renderContents(){
+  if(!canInternal()){setContent('<div class="card">Analiza vsebin je dostopna DNO trenerkam in skrbnici.</div>');return}
+  const f=contentFilters(),rows=contentRows(f),actual=f.scope==='completed',summary=contentSummary(rows,actual),undated=data.drills.filter(d=>!d.session_date),allKnown=contentRows({...f,scope:'planned'}),planned=contentSummary(allKnown),done=contentSummary(allKnown,true);
+  const options=(values,current)=>'<option value="">Vse</option>'+[...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'sl')).map(x=>'<option value="'+esc(x)+'" '+(x===current?'selected':'')+'>'+esc(x)+'</option>').join('');
+  setContent('<div class="head"><div><h2>Analiza vsebin</h2><div class="small muted">Vaje → vsebine → cilji · september in oktober 2026</div></div><button class="btn primary" id="newContentDrill">+ Nova vaja</button></div><div class="card"><div class="form"><div class="field"><label>Obdobje</label><select id="contentPeriod">'+[['month','Ta mesec'],['week','Ta teden'],['all','Celotno obdobje'],['custom','Po meri']].map(([v,l])=>'<option value="'+v+'" '+(f.preset===v?'selected':'')+'>'+l+'</option>').join('')+'</select></div><div class="field"><label>Prikaz</label><select id="contentScope"><option value="planned" '+(!actual?'selected':'')+'>Načrt iz priprav</option><option value="completed" '+(actual?'selected':'')+'>Potrjeno izvedeno</option></select></div><div class="field"><label>Od</label><input id="contentFrom" type="date" value="'+esc(f.from)+'"></div><div class="field"><label>Do</label><input id="contentTo" type="date" value="'+esc(f.to)+'"></div><div class="field"><label>Vsebina</label><select id="contentCategory">'+options(data.drills.map(d=>d.content),f.content)+'</select></div><div class="field"><label>Cilj (glavni ali podporni)</label><select id="contentGoal">'+options(data.drills.flatMap(d=>[d.goal,...(d.support_goals||[])]),f.goal)+'</select></div><div class="field"><label>Faza igre</label><select id="contentPhase">'+options(data.drills.map(d=>d.phase),f.phase)+'</select></div></div></div>'+
+    (window.drillsLoadError?'<div class="msg bad">'+esc(window.drillsLoadError)+'</div>':'')+
+    (!actual?'<div class="msg" style="margin-top:12px">Prikazuješ priprave iz dokumentov. Pretekel datum ne potrjuje izvedbe. Izrecne oznake NISMO so ohranjene; v načrtu so vidne, med izvedenimi jih ni. Vajo in dejansko trajanje potrdi z gumbom Uredi.</div>':'')+
+    '<div class="grid g4" style="margin-top:14px"><div class="card kpi"><b>'+summary.sessions+'</b><span>treningov z vsebinami</span></div><div class="card kpi"><b>'+summary.rows+'</b><span>'+(actual?'izvedenih':'načrtovanih')+' vaj</span></div><div class="card kpi"><b style="font-size:25px">'+minuteText(summary)+'</b><span>vsota vpisanih časov vaj</span></div><div class="card kpi"><b>'+summary.missing+'</b><span>vaj brez '+(actual?'dejanskega':'načrtovanega')+' trajanja</span></div></div>'+
+    '<div class="card" style="margin-top:14px"><h3>Načrt in potrjena izvedba</h3><div class="small">Načrt: '+planned.rows+' vaj · '+minuteText(planned)+'<br>Potrjeno izvedeno: '+done.rows+' vaj · '+minuteText(done)+'<br>Izpuščeno po zapisu: '+allKnown.filter(d=>d.status==='skipped').length+' vaj.</div><p class="tiny muted">To ni izračun uspešnosti. Vaje z neznano izvedbo ostanejo v načrtu; manjkajoč čas ni 0 minut. Alternativne različice so en zapis vaje.</p></div>'+
+    '<div class="card" style="margin-top:14px"><h3>Koliko posamezne vsebine</h3>'+contentBarTable(rows,actual,'content')+'</div><div class="card" style="margin-top:14px"><h3>Faze igre</h3>'+contentBarTable(rows,actual,'phase')+'</div><div class="card" style="margin-top:14px"><h3>'+(actual?'Katere cilje smo izvedle':'Katere cilje vsebujejo priprave')+'</h3>'+contentGoalTable(rows,actual)+'</div>'+
+    '<div class="card" style="margin-top:14px"><h3>Vsebine po tednih</h3>'+contentWeekTable(rows,actual)+'</div>'+
+    '<div class="card" style="margin-top:14px"><h3>Vaje v izbranem obdobju</h3><p class="tiny muted">Razvrstitev vsebin in ciljev je uredniški predlog na podlagi naslovov in trenerjevih navodil. Izvirni opisi so ohranjeni. S potrditvijo lahko popraviš oznake in izvedbo.</p><div class="list">'+contentDrillList([...rows])+'</div></div>'+
+    '<details class="card" style="margin-top:14px"><summary>Podatki za preverbo · '+undated.length+' vaj brez potrjenega datuma</summary><p class="small muted">Te vaje niso vključene v zgornje časovne izračune. Trajanja celotnih delov treninga niso prišteta k trajanjem vaj.</p><div class="list">'+contentDrillList([...undated])+'</div></details>');
+  bindCommon();$('#newContentDrill').onclick=()=>openContentDrill();
+  $$('[data-drill-edit]').forEach(b=>b.onclick=()=>openContentDrill(b.dataset.drillEdit));
+  $('#contentPeriod').onchange=e=>{f.preset=e.target.value;if(f.preset!=='custom')Object.assign(f,contentRange(f.preset));renderContents()};
+  for(const [id,key] of [['contentScope','scope'],['contentCategory','content'],['contentGoal','goal'],['contentPhase','phase'],['contentFrom','from'],['contentTo','to']])$('#'+id).onchange=e=>{f[key]=e.target.value;if(['from','to'].includes(key))f.preset='custom';renderContents()};
+}
+function contentWeekTable(rows,actual){
+  const weeks=new Map();for(const d of rows){const dt=new Date(d.session_date+'T12:00:00');dt.setDate(dt.getDate()-(dt.getDay()+6)%7);const week=dt.toISOString().slice(0,10);if(!weeks.has(week))weeks.set(week,[]);weeks.get(week).push(d)}
+  return '<div class="table"><table><thead><tr><th>Teden od</th><th>Treningi</th><th>Vaje</th><th>Vpisano trajanje</th><th>Vsebine</th></tr></thead><tbody>'+[...weeks].sort((a,b)=>a[0].localeCompare(b[0])).map(([w,ds])=>{const s=contentSummary(ds,actual);return '<tr><td>'+dsl(w)+'</td><td>'+s.sessions+'</td><td>'+s.rows+'</td><td>'+minuteText(s)+'</td><td>'+esc([...new Set(ds.map(d=>d.content))].join(' · '))+'</td></tr>'}).join('')+'</tbody></table></div>';
+}
+function openContentDrill(id){
+  if(!canInternal())return;const f=$('#drillForm'),d=data.drills.find(x=>x.id===id);f.reset();f.elements.id.value=id||'';
+  for(const k of ['session_date','session_label','title','part','sort_order','content','phase','goal','level','planned_minutes','planned_max_minutes','actual_minutes','status','description','coaching_points'])f.elements[k].value=d?.[k]??({session_date:localToday(),part:'Glavni del',sort_order:1,content:'',phase:'Ni opredeljena',level:'Ni opredeljeno',status:'planned'}[k]??'');
+  f.elements.support_goals.value=(d?.support_goals||[]).join('\n');f.elements.classification_confirmed.checked=d?.classification_confirmed||false;
+  $('#contentOptions').innerHTML=[...new Set(data.drills.map(x=>x.content))].map(x=>'<option value="'+esc(x)+'">').join('');$('#goalOptions').innerHTML=[...new Set(data.drills.flatMap(x=>[x.goal,...x.support_goals]))].map(x=>'<option value="'+esc(x)+'">').join('');
+  $('#drillSourceNote').textContent=d?.source_note||'';$('#drillFormError').classList.add('hidden');openM('drillModal');
+}
+let savingContentDrill=false;
+async function saveContentDrill(e){
+  e.preventDefault();if(!canInternal()||savingContentDrill)return;
+  const f=e.target,field=k=>f.elements[k],id=field('id').value,old=data.drills.find(x=>x.id===id),num=k=>field(k).value===''?null:Number(field(k).value);
+  const obj={session_date:field('session_date').value||null,session_label:field('session_label').value.trim(),sort_order:num('sort_order')||0,title:field('title').value.trim(),part:field('part').value,content:field('content').value.trim(),phase:field('phase').value,goal:field('goal').value.trim(),support_goals:[...new Set(field('support_goals').value.split('\n').map(x=>x.trim()).filter(Boolean))],level:field('level').value,planned_minutes:num('planned_minutes'),planned_max_minutes:num('planned_max_minutes')??num('planned_minutes'),actual_minutes:num('actual_minutes'),status:field('status').value,description:field('description').value,coaching_points:field('coaching_points').value,classification_confirmed:field('classification_confirmed').checked,manual_override:true};
+  let error='';if(!obj.title||!obj.content||!obj.goal)error='Dopolni naslov, vsebino in glavni cilj.';
+  if(obj.planned_minutes!==null&&(!Number.isFinite(obj.planned_minutes)||obj.planned_minutes<0))error='Preveri načrtovano trajanje.';
+  if(obj.planned_max_minutes!==null&&(obj.planned_minutes===null||obj.planned_max_minutes<obj.planned_minutes))error='Pri razponu vnesi spodnjo in zgornjo mejo.';
+  if(obj.actual_minutes!==null&&(!Number.isFinite(obj.actual_minutes)||obj.actual_minutes<=0))error='Dejansko trajanje mora biti večje od 0.';
+  if(obj.status==='completed'&&(!obj.session_date||obj.session_date>localToday()||obj.actual_minutes===null))error='Za potrjeno izvedbo vnesi današnji ali pretekli datum in dejansko trajanje.';
+  if(error){$('#drillFormError').textContent=error;$('#drillFormError').classList.remove('hidden');return}
+  obj.training_id=data.trainings.find(t=>t.training_date===obj.session_date)?.id||null;
+  const button=f.querySelector('[type="submit"]');button.disabled=true;savingContentDrill=true;
+  try{const query=old?sb.from('training_drills').update(obj).eq('id',id).eq('updated_at',old.updated_at):sb.from('training_drills').insert(obj);const result=await query.select('id').single();if(result.error)throw result.error;if(!result.data?.id)throw new Error('Vaja ni shranjena. Osveži podatke in poskusi ponovno.');closeM($('#drillModal .x'));await loadAll(false)}catch(error){$('#drillFormError').textContent='Shranjevanje ni uspelo: '+error.message;$('#drillFormError').classList.remove('hidden')}finally{button.disabled=false;savingContentDrill=false}
+}
+$('#drillForm').onsubmit=saveContentDrill;
 function materialType(m){
   if(m.includes('folder'))return 'Mapa';if(m.includes('spreadsheet'))return 'Preglednica';if(m.includes('wordprocessing')||m.includes('google-apps.document'))return 'Dokument';if(m.includes('presentation'))return 'Predstavitev';if(m.includes('pdf'))return 'PDF';if(m.startsWith('video/'))return 'Video';if(m.startsWith('image/'))return 'Slika';return 'Datoteka';
 }
@@ -684,5 +779,6 @@ $('#reviewForm').onsubmit=saveMonthlyReview;
 const {data:{session:initial}}=await sb.auth.getSession();if(initial)await boot(initial);
 </script>
 </body></html>
+
 
 
