@@ -470,6 +470,31 @@ function bindReviewVideoButtons(){
     }catch(error){target.textContent='Posnetka ni mogoče odpreti: '+error.message}
     finally{b.disabled=false;b.textContent='Predvajaj videoposnetek'}
   });
+  $$('[data-inline-review-video]').forEach(b=>b.onclick=()=>uploadInlineReviewVideo(b));
+}
+function inlineReviewVideo(pid,month,evidence){
+  return '<section class="card" style="margin-top:14px"><h3>Videoposnetek k opažanjem</h3><p class="small muted">'+esc(monthName(month+'-01'))+' · '+esc(player(pid)?.full_name||'')+'</p>'+reviewVideoMarkup(evidence)+(canInternal()?'<div class="review-video-upload" style="margin-top:14px"><label class="small" for="inlineVideo-'+esc(pid)+'-'+esc(month)+'">'+(reviewVideo(evidence)?'Izberi nov posnetek za zamenjavo':'Izberi videoposnetek')+'</label><input style="display:block;margin:8px 0" id="inlineVideo-'+esc(pid)+'-'+esc(month)+'" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"><div class="tiny muted">Do 50 MB · priporočamo MP4. Posnetek se shrani k temu mesečnemu reviewu.</div><button type="button" class="btn primary" style="margin-top:10px" data-inline-review-video="'+esc(pid)+'" data-video-month="'+esc(month)+'">'+(reviewVideo(evidence)?'Zamenjaj videoposnetek':'Naloži videoposnetek')+'</button><div class="small review-video-upload-status" style="margin-top:8px" role="status" aria-live="polite"></div></div>':'')+'</section>';
+}
+async function uploadInlineReviewVideo(button){
+  if(!canInternal()||button.disabled)return;
+  const wrapper=button.closest('.review-video-upload'),input=wrapper.querySelector('input[type="file"]'),status=wrapper.querySelector('.review-video-upload-status'),file=input.files[0],pid=button.dataset.inlineReviewVideo,month=button.dataset.videoMonth,types={mp4:'video/mp4',mov:'video/quicktime',webm:'video/webm',m4v:'video/x-m4v'};
+  if(!file){status.textContent='Najprej izberi videoposnetek.';return}
+  const ext=file.name.split('.').pop().toLowerCase();if(!types[ext]||file.size<=0||file.size>50*1024*1024){status.textContent='Izberi video MP4, MOV, WEBM ali M4V do 50 MB.';return}
+  if(!player(pid)||!/^\d{4}-\d{2}$/.test(month)){status.textContent='Igralka ali mesec ni veljaven. Osveži stran.';return}
+  const label=button.textContent;button.disabled=true;input.disabled=true;let uploaded=null,saved=false;
+  try{
+    status.textContent='Preverjam obstoječi review …';
+    const read=await sb.from('monthly_reviews').select('id,evidence,updated_at').eq('player_id',pid).eq('month',month+'-01').maybeSingle();if(read.error)throw read.error;
+    const current=read.data,old=reviewVideo(current?.evidence);status.textContent='Nalagam videoposnetek …';
+    const path='monthly-reviews/'+pid+'/'+month+'/'+crypto.randomUUID()+'.'+ext;
+    const upload=await sb.storage.from('training-documents').upload(path,file,{contentType:types[ext],upsert:false});if(upload.error)throw upload.error;
+    uploaded={path,name:file.name};const evidence=withReviewVideo(current?.evidence,uploaded);status.textContent='Shranjujem posnetek k igralki …';
+    const query=current?sb.from('monthly_reviews').update({evidence}).eq('id',current.id).eq('updated_at',current.updated_at):sb.from('monthly_reviews').insert({player_id:pid,month:month+'-01',evidence});
+    const result=await query.select('id').single();if(result.error)throw result.error;if(!result.data?.id)throw new Error('Posnetek ni bil povezan z reviewom. Osveži podatke in poskusi ponovno.');saved=true;
+    if(old&&old.path!==path){try{await sb.storage.from('training-documents').remove([old.path])}catch{}}
+    status.textContent='Videoposnetek je shranjen.';await loadAll(false);
+  }catch(error){if(uploaded&&!saved){try{await sb.storage.from('training-documents').remove([uploaded.path])}catch{}}status.textContent=saved?'Videoposnetek je shranjen. Osveži stran za prikaz.':'Nalaganje ni uspelo: '+error.message}
+  finally{button.disabled=false;input.disabled=false;button.textContent=label}
 }
 let savingMonthlyReview=false;
 async function saveMonthlyReview(e){
@@ -538,10 +563,10 @@ function reviewDetailHtml(pid,month){
   return '<div class="card" style="margin-top:14px"><div class="row between wrap"><div><h2>'+esc(p.full_name)+'</h2><div class="small muted">'+esc(monthName(month+'-01'))+' · '+(month===localToday().slice(0,7)?'Vmesni mesečni review':'Mesečni review')+'</div></div><span class="chip">'+m.a.tracked.size+' treningov z opažanji</span></div><p class="small muted">'+m.a.obs.length+' številčno ocenjenih in '+m.a.qualitative.length+' besedilnih spremljanj · '+m.self.length+' samoocen. Odsotnost zapisa ne pomeni ocene 0.</p>'+(stale?'<div class="msg">Opažanja so novejša od shranjene interpretacije. Dokazi spodaj so aktualni; trenerka naj pregleda povzetek in naslednji fokus.</div>':'')+(canInternal()?'<button class="btn" data-review-player="'+esc(pid)+'" data-review-month="'+esc(month)+'">Uredi strokovni review</button>':'')+'</div>'+
     section(1,'Kaj smo opazovali',evidence||reviewText('Za ta mesec še ni poimenskega IDP spremljanja. Za konkreten review potrebujemo fokus, pričakovano in dejansko vedenje.'))+
     section(2,'Kaj so opažanja pokazala',(m.progress?'<b class="small">Ugotovitve</b>'+reviewText(m.progress):reviewText(m.a.progress))+(m.findings?'<div style="margin-top:12px"><b class="small">Kaj ostaja odprto</b>'+reviewText(m.findings)+'</div>':'')+(m.progress&&m.a.obs.length?'<div class="review-section"><b class="small">Zabeležene ocene po fokusu</b>'+reviewText(m.a.progress)+'</div>':'')+'<p class="tiny muted">Razlaga temelji na zapisanih primerih. En trening ali višja ocena še ne potrdita trajnega napredka.</p>'+(m.extra.length?'<details><summary>Dodatni zapisi trenerke ('+m.extra.length+')</summary>'+m.extra.map(x=>'<h4>'+esc(dsl(x.record_date)+' · '+(x.title||x.record_type))+'</h4>'+reviewText(x.body)).join('')+'</details>':''))+
+    inlineReviewVideo(pid,month,m.r?.evidence)+
     section(3,'Kaj preverjamo naprej',reviewText(m.check||(!m.details.length?'Najprej zberemo konkreten primer izvedbe glede na dogovorjeni fokus.':'Konkretna situacija in merilo preverjanja še nista zapisana. Pri naslednjem primerljivem treningu zabeleži signal, odločitev, izvedbo in ali je igralka potrebovala usmerjanje.'))+(m.plans.length?'<h4>Že zapisane naloge za naslednje treninge</h4><p class="tiny muted">To so načrti. Tudi po datumu treninga ostanejo načrti, dokler ne dobimo zapisa o izvedbi.</p>'+m.plans.map(x=>{const d=reviewSourceParts(x);return '<div class="review-section"><b class="small">'+esc(dsl(x.record_date)+' · '+x.title)+'</b>'+reviewText(d.focus)+'<b class="small">Kaj želimo videti</b>'+reviewText(d.expected)+'</div>'}).join(''):''))+
     section(4,'Naslednji fokus glede na opažanja',reviewText(m.goal||(m.details.length?m.a.goal:''),'Naslednji fokus iz opažanj še ni določen.')+'<p class="tiny muted">Predlog postane dogovor po potrditvi trenerke in pogovoru z igralko. Načrt druge vsebine ne pomeni, da je prejšnji fokus osvojen.</p>'+'<details><summary class="small">Širši fokus iz profila</summary>'+reviewText(p.current_focus)+'</details>')+
     section(5,'Ocena trenerke',(numeric.length?numeric.map(d=>'<div class="review-section"><b class="small">'+esc(dsl(d.date)+' · '+d.focus)+'</b><div>'+score(d.score)+'</div>'+reviewText(d.actual,'Opis izvedbe ob oceni ni vnesen.')+'</div>').join(''):reviewText('Enotna trenerkina ocena 0–2 za ta mesec ni vpisana.'))+'<p class="tiny muted">Lestvica aplikacije: 0 – vedenje ni vidno; 1 – ob usmerjanju; 2 – samostojno. Ocen različnih fokusov ne združujemo v izmišljeno mesečno oceno.</p>'+(pairs.length?'<h4>Izvorni pari oziroma delne ocene iz Driva</h4>'+pairs.map(({d,values})=>'<p class="small"><b>'+esc(dsl(d.date))+':</b> '+esc(values.join(' · '))+'</p>').join('')+'<p class="small muted">Pomen leve in desne številke še ni potrjen. Celoten zapis z merili je v 1. razdelku; teh vrednosti ne pripisujemo trenerki ali igralki.</p>':''))+
-    '<section class="card" style="margin-top:14px"><h3>Dokaz – videoposnetek</h3>'+reviewVideoMarkup(m.r?.evidence)+'</section>'+
     section(6,'Samoocena igralke',m.self.length?m.self.map(x=>'<article class="review-section"><b class="small">'+esc(dsl(x.session_date)+' · '+x.focus)+'</b><div class="small">Področje: '+esc(x.area||'ni vneseno')+' · Samoocena: '+esc(x.self_score??'ni vnesena')+'</div><b class="small">Njen konkretni primer</b>'+reviewText(x.example)+'<b class="small">Njen naslednji korak</b>'+reviewText(x.next_goal)+'</article>').join(''):reviewText('Igralka za ta mesec še ni oddala samoocene. Trenerkinega zapisa ne predstavljamo kot njen odgovor.'))+
     (m.r?.player_feedback&&m.r.player_feedback!=='še ni prejet'?'<section class="card" style="margin-top:14px"><h3>Zapisani feedback igralke</h3>'+reviewText(m.r.player_feedback)+'</section>':'')+
     '<details class="card" style="margin-top:14px"><summary>Kako zapišemo uporaben IDP po treningu</summary><p class="small">Igralka · IDP skupina · fokus · vaja/situacija · pričakovano vedenje · dejansko vedenje in učinek · samostojno ali po usmerjanju · ocena z legendo · naslednje preverjanje. Samooceno igralka vpiše ločeno s svojim primerom.</p><p class="small">Primer zapisa (ponazoritev): V igri 4v4 je pred sprejemom pogledala čez ramo in prepoznala prosto soigralko. Pod pritiskom je rešitev dvakrat iskala šele po sprejemu; po opozorilu je podala pravočasno. Naslednjič preverimo isto vedenje brez opozorila. Številke vnesemo samo, če smo priložnosti dejansko šteli.</p></details>';
@@ -798,6 +823,7 @@ $('#reviewForm').onsubmit=saveMonthlyReview;
 const {data:{session:initial}}=await sb.auth.getSession();if(initial)await boot(initial);
 </script>
 </body></html>
+
 
 
 
