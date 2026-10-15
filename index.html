@@ -134,7 +134,7 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
 <div class="field"><label>Igralka</label><select name="player_id"></select></div><div class="field"><label>Mesec</label><input type="month" name="month"></div>
 <div class="full small muted" id="reviewSource"></div><div class="full"><button type="button" class="btn" id="fillReviewDraft">Vstavi aktualni samodejni povzetek</button></div>
 <div class="field full"><label>Kaj opažanja kažejo – ugotovitve in spremembe</label><textarea name="progress"></textarea></div><div class="field full"><label>Kaj ostaja odprto</label><textarea name="remaining"></textarea></div><div class="field full"><label>Kaj preverjamo naprej – situacija in merilo uspeha</label><textarea name="verification" placeholder="V kateri situaciji preverimo vedenje, kaj opazujemo in po čem prepoznamo kakovostno samostojno izvedbo?"></textarea><div class="tiny muted">Predlagano preverjanje preglej in prilagodi. S shranjevanjem ga potrdiš kot del reviewa.</div></div>
-<div class="field full"><label>Dokaz / primer iz igre</label><textarea name="evidence"></textarea></div><div class="field full"><label>Naslednji 4-tedenski cilj</label><textarea name="next_four_week_goal"></textarea></div>
+<div class="field full"><label for="reviewVideoFile">Dokaz – videoposnetek</label><input type="hidden" name="evidence"><input id="reviewVideoFile" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"><div class="tiny muted">Naloži izsek do 50 MB. Za predvajanje priporočamo MP4. Posnetek se shrani skupaj z reviewom.</div><div id="reviewVideoCurrent" style="margin-top:8px"></div><div id="reviewVideoStatus" class="small" role="status" aria-live="polite"></div></div><div class="field full"><label>Naslednji 4-tedenski cilj</label><textarea name="next_four_week_goal"></textarea></div>
 <div class="field full"><label>Feedback igralke</label><textarea name="player_feedback" placeholder="še ni prejet"></textarea></div>
 <div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary">Shrani</button></div></form>
 </div></div>
@@ -290,7 +290,7 @@ function analysisCard(pid,month){
     (stale?'<div class="msg">Po shranjenem reviewu so bila dodana ali spremenjena opažanja. Preglej aktualni povzetek in po potrebi dopolni review.</div>':'')+
     (canInternal()?'<button class="btn primary" style="margin-top:12px" data-review-player="'+pid+'" data-review-month="'+month+'">'+(r?'Preglej in dopolni shranjeni review':'Pripravi mesečni review')+'</button>':'')+'</div>';
 }
-function bindReviewButtons(){ $$('[data-review-player]').forEach(b=>b.onclick=e=>{e.stopPropagation();openReview(b.dataset.reviewPlayer,b.dataset.reviewMonth)}) }
+function bindReviewButtons(){ $$('[data-review-player]').forEach(b=>b.onclick=e=>{e.stopPropagation();openReview(b.dataset.reviewPlayer,b.dataset.reviewMonth)});bindReviewVideoButtons() }
 
 function myPlayerId(){return data.accounts.find(a=>a.user_id===me?.id)?.player_id||null}
 function ownSelf(a){return me?.role==='player'&&a.player_id===myPlayerId()&&a.created_by===me.id&&a.source==='app'}
@@ -430,6 +430,57 @@ function renderTracking(){
   weeks.map((w,i)=>'<div class="card" style="margin-bottom:12px"><h3>Teden '+(i+1)+'</h3><div class="daygrid">'+['Ponedeljek','Torek','Sreda','Četrtek'].map(day=>{let a=w[1].filter(t=>t.day_name===day);return '<div class="day"><header>'+day+'</header><div class="body">'+(a.length?a.map(t=>'<div class="mini click" data-training="'+t.id+'"><b class="small">'+esc(t.title)+'</b><div class="tiny muted">'+dsl(t.training_date)+'</div>'+data.observations.filter(o=>o.training_id===t.id).map(o=>'<div class="row" style="margin-top:5px">'+score(o.score)+'<span class="tiny">'+esc(player(o.player_id)?.full_name||'')+' · '+esc(o.focus)+'</span></div>').join('')+data.records.filter(r=>r.training_id===t.id&&['IDP opažanje iz Driva','Načrt IDP iz Driva'].includes(r.record_type)).map(r=>'<div class="tiny" style="margin-top:5px"><span class="chip">'+(r.record_type==='Načrt IDP iz Driva'?'Načrt':'Opis')+'</span> '+esc(player(r.player_id)?.full_name||'')+' · '+esc(r.title)+'</div>').join('')+'</div>').join(''):'<div class="tiny muted">—</div>')+'</div></div>'}).join('')+'</div></div>').join(''));
   bindCommon();$('#trackMonth').onchange=e=>{window.trackMonth=e.target.value;renderTracking()};
 }
+function reviewVideo(value){
+  const match=String(value||'').match(/\[REVIEW_VIDEO\]([\s\S]*?)\[\/REVIEW_VIDEO\]/);
+  if(!match)return null;
+  try{const v=JSON.parse(match[1]);return typeof v.path==='string'&&/^monthly-reviews\/[a-f0-9-]+\/\d{4}-\d{2}\/[a-zA-Z0-9._-]+$/.test(v.path)&&typeof v.name==='string'?v:null}catch{return null}
+}
+function withReviewVideo(evidence,video){
+  const text=String(evidence||'').replace(/\n?\[REVIEW_VIDEO\][\s\S]*?\[\/REVIEW_VIDEO\]/g,'').trim();
+  return text+(video?'\n[REVIEW_VIDEO]'+JSON.stringify(video)+'[/REVIEW_VIDEO]':'');
+}
+function reviewVideoMarkup(evidence){
+  const v=reviewVideo(evidence);if(!v||!canInternal())return '<div class="small muted">Videoposnetek še ni naložen.</div>';
+  return '<div class="review-video"><b class="small">'+esc(v.name)+'</b><div style="margin-top:8px"><button type="button" class="btn" data-review-video="'+esc(v.path)+'">Predvajaj videoposnetek</button></div><div class="review-video-player" style="margin-top:8px"></div></div>';
+}
+function bindReviewVideoButtons(){
+  $$('[data-review-video]').forEach(b=>b.onclick=async()=>{
+    if(!canInternal())return;
+    const target=b.closest('.review-video').querySelector('.review-video-player');b.disabled=true;b.textContent='Odpiram …';
+    try{const {data:r,error}=await sb.storage.from('training-documents').createSignedUrl(b.dataset.reviewVideo,3600);if(error)throw error;
+      target.replaceChildren();const video=document.createElement('video');video.controls=true;video.preload='metadata';video.playsInline=true;video.style.cssText='width:100%;max-height:460px;background:#111;border-radius:10px';video.src=r.signedUrl;target.append(video);
+      const a=document.createElement('a');a.href=r.signedUrl;a.target='_blank';a.rel='noopener noreferrer';a.className='small';a.textContent='Odpri posnetek v novem zavihku ↗';target.append(a);
+    }catch(error){target.textContent='Posnetka ni mogoče odpreti: '+error.message}
+    finally{b.disabled=false;b.textContent='Predvajaj videoposnetek'}
+  });
+}
+let savingMonthlyReview=false;
+async function saveMonthlyReview(e){
+  e.preventDefault();if(!canInternal()||savingMonthlyReview)return;
+  const f=e.target,pid=f.player_id.value,ym=f.month.value,file=$('#reviewVideoFile').files[0],existing=data.reviews.find(x=>x.player_id===pid&&x.month.startsWith(ym)),oldVideo=reviewVideo(existing?.evidence);
+  const ext=file?.name.split('.').pop().toLowerCase(),types={mp4:'video/mp4',mov:'video/quicktime',webm:'video/webm',m4v:'video/x-m4v'};
+  if(file&&(!types[ext]||file.size<=0||file.size>50*1024*1024)){alert('Izberi videoposnetek MP4, MOV, WEBM ali M4V do 50 MB.');return}
+  const obj={player_id:pid,month:ym+'-01',progress:f.progress.value,remaining:f.remaining.value+(f.verification.value.trim()?'\n\n[PREVERJANJE]\n'+f.verification.value.trim()+'\n[/PREVERJANJE]':''),evidence:f.evidence.value,next_four_week_goal:f.next_four_week_goal.value,player_feedback:f.player_feedback.value||'še ni prejet'};
+  const controls=[...f.querySelectorAll('input,select,textarea,button')].map(el=>[el,el.disabled]);controls.forEach(([el])=>el.disabled=true);savingMonthlyReview=true;
+  let uploaded=null,saved=false;
+  try{
+    if(file){$('#reviewVideoStatus').textContent='Nalaganje videoposnetka …';
+      const path='monthly-reviews/'+pid+'/'+ym+'/'+crypto.randomUUID()+'.'+ext;
+      const up=await sb.storage.from('training-documents').upload(path,file,{contentType:types[ext],upsert:false});if(up.error)throw up.error;
+      uploaded={path,name:file.name};obj.evidence=withReviewVideo(obj.evidence,uploaded);
+    }
+    $('#reviewVideoStatus').textContent='Shranjujem review …';
+    const query=existing?sb.from('monthly_reviews').update(obj).eq('id',existing.id).eq('updated_at',existing.updated_at):sb.from('monthly_reviews').insert(obj);
+    const result=await query.select('id').single();if(result.error)throw result.error;if(!result.data?.id)throw new Error('Review ni bil shranjen. Osveži podatke in poskusi ponovno.');saved=true;
+    if(uploaded&&oldVideo&&oldVideo.path!==uploaded.path){const cleanup=await sb.storage.from('training-documents').remove([oldVideo.path]);if(cleanup.error)console.warn('Prejšnjega videa ni bilo mogoče odstraniti iz shrambe.')}
+    closeM($('#reviewModal .x'));await loadAll(false);
+    if(view==='reviews'){window.reviewPlayer=pid;window.reviewMonth=ym;selectedPlayer=null;renderReviews()}else{selectedPlayer=pid;renderPlayer(pid)}
+  }catch(error){
+    if(uploaded&&!saved){try{await sb.storage.from('training-documents').remove([uploaded.path])}catch{}}
+    $('#reviewVideoStatus').textContent=saved?'Review je shranjen. Osveži stran za prikaz.':'Shranjevanje ni uspelo: '+error.message;
+    alert($('#reviewVideoStatus').textContent);
+  }finally{savingMonthlyReview=false;controls.forEach(([el,disabled])=>el.disabled=disabled)}
+}
 function reviewClean(value){
   return String(value||'').replace(/^\[\/?SAMODEJNI POVZETEK IZ DRIVA[^\n]*\]\s*/gm,'').replace(/^Vmesni oktobrski pregled na podlagi zapisov do [^\n]+\n?/gm,'').trim();
 }
@@ -473,6 +524,7 @@ function reviewDetailHtml(pid,month){
     section(3,'Kaj preverjamo naprej',reviewText(m.check||(!m.details.length?'Najprej zberemo konkreten primer izvedbe glede na dogovorjeni fokus.':'Konkretna situacija in merilo preverjanja še nista zapisana. Pri naslednjem primerljivem treningu zabeleži signal, odločitev, izvedbo in ali je igralka potrebovala usmerjanje.'))+(m.plans.length?'<h4>Že zapisane naloge za naslednje treninge</h4><p class="tiny muted">To so načrti. Tudi po datumu treninga ostanejo načrti, dokler ne dobimo zapisa o izvedbi.</p>'+m.plans.map(x=>{const d=reviewSourceParts(x);return '<div class="review-section"><b class="small">'+esc(dsl(x.record_date)+' · '+x.title)+'</b>'+reviewText(d.focus)+'<b class="small">Kaj želimo videti</b>'+reviewText(d.expected)+'</div>'}).join(''):''))+
     section(4,'Naslednji fokus glede na opažanja',reviewText(m.goal||(m.details.length?m.a.goal:''),'Naslednji fokus iz opažanj še ni določen.')+'<p class="tiny muted">Predlog postane dogovor po potrditvi trenerke in pogovoru z igralko. Načrt druge vsebine ne pomeni, da je prejšnji fokus osvojen.</p>'+'<details><summary class="small">Širši fokus iz profila</summary>'+reviewText(p.current_focus)+'</details>')+
     section(5,'Ocena trenerke',(numeric.length?numeric.map(d=>'<div class="review-section"><b class="small">'+esc(dsl(d.date)+' · '+d.focus)+'</b><div>'+score(d.score)+'</div>'+reviewText(d.actual,'Opis izvedbe ob oceni ni vnesen.')+'</div>').join(''):reviewText('Enotna trenerkina ocena 0–2 za ta mesec ni vpisana.'))+'<p class="tiny muted">Lestvica aplikacije: 0 – vedenje ni vidno; 1 – ob usmerjanju; 2 – samostojno. Ocen različnih fokusov ne združujemo v izmišljeno mesečno oceno.</p>'+(pairs.length?'<h4>Izvorni pari oziroma delne ocene iz Driva</h4>'+pairs.map(({d,values})=>'<p class="small"><b>'+esc(dsl(d.date))+':</b> '+esc(values.join(' · '))+'</p>').join('')+'<p class="small muted">Pomen leve in desne številke še ni potrjen. Celoten zapis z merili je v 1. razdelku; teh vrednosti ne pripisujemo trenerki ali igralki.</p>':''))+
+    '<section class="card" style="margin-top:14px"><h3>Dokaz – videoposnetek</h3>'+reviewVideoMarkup(m.r?.evidence)+'</section>'+
     section(6,'Samoocena igralke',m.self.length?m.self.map(x=>'<article class="review-section"><b class="small">'+esc(dsl(x.session_date)+' · '+x.focus)+'</b><div class="small">Področje: '+esc(x.area||'ni vneseno')+' · Samoocena: '+esc(x.self_score??'ni vnesena')+'</div><b class="small">Njen konkretni primer</b>'+reviewText(x.example)+'<b class="small">Njen naslednji korak</b>'+reviewText(x.next_goal)+'</article>').join(''):reviewText('Igralka za ta mesec še ni oddala samoocene. Trenerkinega zapisa ne predstavljamo kot njen odgovor.'))+
     (m.r?.player_feedback&&m.r.player_feedback!=='še ni prejet'?'<section class="card" style="margin-top:14px"><h3>Zapisani feedback igralke</h3>'+reviewText(m.r.player_feedback)+'</section>':'')+
     '<details class="card" style="margin-top:14px"><summary>Kako zapišemo uporaben IDP po treningu</summary><p class="small">Igralka · IDP skupina · fokus · vaja/situacija · pričakovano vedenje · dejansko vedenje in učinek · samostojno ali po usmerjanju · ocena z legendo · naslednje preverjanje. Samooceno igralka vpiše ločeno s svojim primerom.</p><p class="small">Primer zapisa (ponazoritev): V igri 4v4 je pred sprejemom pogledala čez ramo in prepoznala prosto soigralko. Pod pritiskom je rešitev dvakrat iskala šele po sprejemu; po opozorilu je podala pravočasno. Naslednjič preverimo isto vedenje brez opozorila. Številke vnesemo samo, če smo priložnosti dejansko šteli.</p></details>';
@@ -617,7 +669,8 @@ function populateReview(useDraft=false){
   const detail=reviewModel(pid,month);
   f.remaining.value=useDraft||!r?a.remaining:(r.remaining||'').replace(/\[PREVERJANJE\][\s\S]*?\[\/PREVERJANJE\]/g,'').trim();
   f.verification.value=detail.check||'';
-  f.evidence.value=useDraft||!r?a.evidence:r.evidence||'';
+  f.evidence.value=useDraft||!r?withReviewVideo(a.evidence,reviewVideo(r?.evidence)):r.evidence||'';
+  if(!useDraft)$('#reviewVideoFile').value='';$('#reviewVideoStatus').textContent='';$('#reviewVideoCurrent').innerHTML=reviewVideoMarkup(f.evidence.value);bindReviewVideoButtons();
   f.next_four_week_goal.value=useDraft||!r?a.goal:r.next_four_week_goal||'';
   if(!useDraft)f.player_feedback.value=r?.player_feedback||(r?'':selfFeedbackText(pid,month));
   $('#reviewSource').textContent=(useDraft||!r?'Samodejni osnutek iz '+a.obs.length+' opažanj. Preglej in dopolni pred shranjevanjem.':'Naložen obstoječi review trenerke. Aktualni povzetek lahko vstaviš spodaj.')+' Feedback igralke vpiši iz njenega dejanskega odziva.';
@@ -626,9 +679,10 @@ function openReview(pid,month){let f=$('#reviewForm');f.reset();fillPlayerSel(f.
 $('#reviewForm').elements.player_id.onchange=()=>populateReview();
 $('#reviewForm').elements.month.onchange=()=>populateReview();
 $('#fillReviewDraft').onclick=()=>{if(confirm('Vstavim aktualni povzetek namesto besedila v poljih napredka, rezerv, dokazov in naslednjega cilja? Feedback igralke ostane.'))populateReview(true)};
-$('#reviewForm').onsubmit=async e=>{e.preventDefault();let f=e.target,month=f.month.value+'-01',obj={player_id:f.player_id.value,month,progress:f.progress.value,remaining:f.remaining.value+(f.verification.value.trim()?'\n\n[PREVERJANJE]\n'+f.verification.value.trim()+'\n[/PREVERJANJE]':''),evidence:f.evidence.value,next_four_week_goal:f.next_four_week_goal.value,player_feedback:f.player_feedback.value||'še ni prejet'};let {error}=await sb.from('monthly_reviews').upsert(obj,{onConflict:'player_id,month'});if(error)return alert(error.message);if(obj.next_four_week_goal)await sb.from('players').update({next_micro_focus:obj.next_four_week_goal}).eq('id',obj.player_id);closeM($('#reviewModal .x'));await loadAll(false);if(view==='reviews'){window.reviewPlayer=obj.player_id;window.reviewMonth=f.month.value;selectedPlayer=null;renderReviews()}else{selectedPlayer=obj.player_id;renderPlayer(obj.player_id)}};
+$('#reviewForm').onsubmit=saveMonthlyReview;
 
 const {data:{session:initial}}=await sb.auth.getSession();if(initial)await boot(initial);
 </script>
 </body></html>
+
 
