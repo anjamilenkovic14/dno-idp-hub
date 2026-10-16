@@ -36,6 +36,7 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
 #selfModal .field{min-width:0}#selfModal input,#selfModal select,#selfModal textarea{width:100%;min-width:0}
 .analysis-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}.analysis-card{border-left:4px solid var(--p)}.analysis-card .row{flex-wrap:wrap}.review-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}.review-section{margin-top:10px}
 .training-notes{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin-top:12px}
+.training-idp-table{min-width:850px}.training-idp-table td{vertical-align:top}.training-idp-table th:nth-child(1){width:14%}.training-idp-table th:nth-child(2){width:16%}.training-idp-table th:nth-child(3){width:20%}.training-idp-table th:nth-child(4){width:24%}.training-idp-table th:nth-child(5){width:26%}
 </style>
 </head>
 <body>
@@ -113,10 +114,10 @@ table{border-collapse:collapse;width:100%;min-width:900px;font-size:11px}.table{
   <form id="obsForm" class="form">
     <input type="hidden" name="id"><input type="hidden" name="training_id">
     <div class="field"><label>Igralka</label><select name="player_id"></select></div><div class="field"><label>IDP skupina</label><select name="idp_group"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></div>
-    <div class="field full"><label>Glavni fokus</label><input name="focus" required></div><div class="field full"><label>Vedenje, ki ga opazujem</label><input name="behavior" required></div>
+    <div class="field full"><label>Glavni fokus igralke v tej skupini</label><input name="focus" required></div><div class="field full"><label>Vedenje, ki smo ga opazovali</label><input name="behavior" required><span class="tiny muted">Naloga oziroma pričakovano vedenje; zapis o izvedbi vnesi spodaj pri oceni po treningu.</span></div>
     <div class="field"><label>Ocena 0–2</label><select name="score"><option value="0">0 – ni vidno</option><option value="1" selected>1 – delno / ob usmerjanju</option><option value="2">2 – samostojno</option></select></div>
     <div class="field"><label>Feedback</label><select name="feedback_given"><option value="false">NE</option><option value="true">DA</option></select></div>
-    <div class="field full"><label>Kratka opomba</label><textarea name="note"></textarea></div><div class="field full"><label>Naslednji mikro fokus</label><input name="next_micro_focus"></div>
+    <div class="field full"><label>Ocena po treningu – zapis o dejanski izvedbi</label><textarea name="note" placeholder="Kaj je igralka izvedla, kako samostojno in s kakšnim učinkom?"></textarea></div><div class="field full"><label>Naslednji mikro fokus</label><input name="next_micro_focus"></div>
     <div class="full row" style="justify-content:flex-end"><button type="button" class="btn" data-close>Prekliči</button><button class="btn primary">Shrani</button></div>
   </form>
 </div></div>
@@ -430,10 +431,23 @@ async function renderTraining(id){
   setContent('<div class="head"><div><button class="btn" data-back="trainings">← Treningi</button><h2>'+esc(t.title)+'</h2><div class="small muted">'+dsl(t.training_date)+' · '+esc(t.day_name||'')+'</div>'+audit(t)+'</div><div class="toolbar">'+(canInternal()?'<button class="btn" id="editTraining">Uredi trening</button><button class="btn danger" data-delete-training="'+id+'">Izbriši trening</button>':'')+(canObserve()?'<button class="btn primary" id="newObsT">+ IDP opažanje</button>':'')+'</div></div>'+
   '<div class="grid g2"><div class="card"><h3>Vsebina</h3><div class="small"><b>Namen:</b> '+esc(t.purpose||'—')+'<br><b>Metoda:</b> '+esc(t.method||'—')+'</div><div class="small training-notes">'+esc(t.notes||'—')+'</div><div class="chips" style="margin-top:10px">'+chips(t.idp_areas)+'</div></div>'+
   '<div class="card"><h3>Dokumenti in povezave</h3><div class="small"><b>Video:</b> '+(t.video_url?'<a target="_blank" href="'+esc(t.video_url)+'">odpri</a>':'—')+'<br><b>Druga povezava:</b> '+(t.document_url?'<a target="_blank" href="'+esc(t.document_url)+'">odpri</a>':'—')+'</div><div id="docs" style="margin-top:10px">'+docs.map(d=>'<div class="item"><div class="grow"><b class="small">Word: '+esc(d.file_name)+'</b><div class="tiny muted">'+Math.round((d.size_bytes||0)/1024)+' KB</div></div><button class="btn" data-doc="'+d.id+'">Odpri</button></div>').join('')+'</div></div></div>'+
-  '<div class="card" style="margin-top:14px"><h3>IDP spremljanje</h3><div class="table"><table><thead><tr><th>Igralka</th><th>Skupina</th><th>Fokus</th><th>Vedenje</th><th>Ocena</th><th>Opomba</th><th>Mikro fokus</th><th>Uredila</th></tr></thead><tbody>'+obs.map(o=>{let p=player(o.player_id),u=prof(o.updated_by);return '<tr><td><a href="#" data-player="'+o.player_id+'">'+esc(p?.full_name||'')+'</a></td><td>'+esc(o.idp_group)+'</td><td>'+esc(o.focus)+'</td><td>'+esc(o.behavior)+'</td><td>'+score(o.score)+(canObserve()?'<button class="edit" aria-label="Uredi opažanje" data-edit-observation="'+o.id+'">✎</button>':'')+'</td><td>'+esc(o.note||'')+'</td><td>'+esc(o.next_micro_focus||'')+'</td><td>'+esc(u?.full_name||'Začetni vnos')+'<br><span class="tiny muted">'+ts(o.updated_at)+'</span></td></tr>'}).join('')+(obs.length?'':'<tr><td colspan="8" class="muted">V tabeli še ni ocen 0–2. Morebitni izvorni besedilni zapisi, sestavljene ocene in načrtovane naloge so prikazani spodaj. Prazno ne pomeni ocene 0.</td></tr>')+'</tbody></table></div></div>'+trainingRecordSection(id)+selfSection(null,id));
+  trainingIdpTable(id)+selfSection(null,id));
   bindCommon();if($('#editTraining'))$('#editTraining').onclick=()=>openTraining(id);if($('#newObsT'))$('#newObsT').onclick=()=>openObs(id);
   $$('[data-doc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.doc));
 }
+
+function trainingIdpTable(id){
+  const field=(body,label)=>{const token=label+':';const start=body.indexOf(token);if(start<0)return '';return body.slice(start+token.length).split(/\n(?:Izvorno področje|Izvorni fokus \/ sestavljeni zapis|Dogovorjeno vedenje \/ pozornost trenerke|Zapis po treningu|Zapis ocen|Številčna|Delne ocene|Strokovni predlog|Pari ocen)/)[0].trim()};
+  const rows=data.observations.filter(o=>o.training_id===id).map(o=>({pid:o.player_id,group:o.idp_group,focus:o.focus,behavior:o.behavior,rating:score(o.score),comment:o.note||'',edit:canObserve()?'<button class="edit" aria-label="Uredi IDP spremljanje" data-edit-observation="'+esc(o.id)+'">✎</button>':''}));
+  data.records.filter(r=>r.training_id===id&&['IDP opažanje iz Driva','Načrt IDP iz Driva'].includes(r.record_type)).forEach(r=>{
+    const b=r.body||'',p=reviewSourceParts(r),planned=r.record_type==='Načrt IDP iz Driva';
+    const raw=field(b,'Zapis ocen (dobesedno iz vira)')||p.actual;
+    rows.push({pid:r.player_id,group:p.area,focus:field(b,'Izvorni fokus / sestavljeni zapis')||p.focus,behavior:field(b,'Dogovorjeno vedenje / pozornost trenerke')||p.expected,rating:'<span class="chip">'+(planned?'Načrt · brez ocene':'Izvorni zapis')+'</span>',comment:planned?'Ocena po treningu ni vnesena.':(raw||'Ocena po treningu ni vnesena.'),edit:''});
+  });
+  rows.sort((a,b)=>(player(a.pid)?.full_name||'').localeCompare(player(b.pid)?.full_name||'','sl'));
+  return '<div class="card" style="margin-top:14px"><h3>IDP spremljanje</h3><p class="small muted">Vedenje je konkretna naloga, ki jo spremljamo. Ocena po treningu vsebuje oceno in zapis o dejanski izvedbi. Prazno ne pomeni ocene 0.</p><div class="table"><table class="training-idp-table"><thead><tr><th>Ime in priimek</th><th>Izbrana IDP skupina</th><th>Glavni fokus igralke v tej skupini</th><th>Vedenje, ki smo ga opazovali</th><th>Ocena po treningu</th></tr></thead><tbody>'+rows.map(r=>'<tr><td><a href="#" data-player="'+esc(r.pid)+'">'+esc(player(r.pid)?.full_name||'Igralka')+'</a></td><td>'+esc(r.group||'Ni vpisana')+'</td><td class="analysis-text">'+esc(r.focus||'Ni vpisan')+'</td><td class="analysis-text">'+esc(r.behavior||'Ni vpisano')+'</td><td>'+r.rating+r.edit+(r.comment?'<div class="small analysis-text" style="margin-top:8px">'+esc(r.comment)+'</div>':'')+'</td></tr>').join('')+(rows.length?'':'<tr><td colspan="5" class="muted">Za ta trening še ni vpisanega IDP spremljanja.</td></tr>')+'</tbody></table></div></div>';
+}
+
 function trainingRecordSection(id){
   const list=data.records.filter(r=>r.training_id===id&&['IDP opažanje iz Driva','Načrt IDP iz Driva'].includes(r.record_type));
   if(!list.length)return '';
