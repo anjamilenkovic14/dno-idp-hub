@@ -332,7 +332,7 @@ function selfSection(pid,tid){
 }
 function renderMyPlayer(id){
   const p=player(id);if(!p)return;
-  setContent('<div class="hero"><h1>'+esc(p.full_name)+'</h1><p>Moj IDP · moj razvoj · moji primeri iz igre</p></div><div class="grid g2"><div class="card"><h3>Moj trenutni fokus</h3><div class="analysis-text">'+esc(p.current_focus||'Dogovoriva se s trenerko.')+'</div><h4>Naslednji korak</h4><div class="analysis-text">'+esc(p.next_micro_focus||'—')+'</div><div class="msg">'+esc(p.coaching_cue||'Izberi en fokus in opiši konkreten primer iz treninga.')+'</div></div><div class="card"><h3>Moj 4-tedenski načrt</h3>'+(p.four_week_plan||[]).map((w,i)=>'<div class="week" style="margin-bottom:8px"><b>Teden '+(i+1)+'</b>'+esc(w)+'</div>').join('')+'<button class="btn" data-go="trainings">Odpri treninge</button></div></div>'+selfSection(id,null));bindCommon();
+  setContent('<div class="hero"><h1>'+esc(p.full_name)+'</h1><p>Moj IDP · moj razvoj · moji primeri iz igre</p></div>'+developmentProfileHtml(p)+'<div class="grid g2"><div class="card"><h3>Moj trenutni fokus</h3><div class="analysis-text">'+esc(p.current_focus||'Dogovoriva se s trenerko.')+'</div><h4>Naslednji korak</h4><div class="analysis-text">'+esc(p.next_micro_focus||'—')+'</div><div class="msg">'+esc(p.coaching_cue||'Izberi en fokus in opiši konkreten primer iz treninga.')+'</div></div><div class="card"><h3>Moj 4-tedenski načrt</h3>'+(p.four_week_plan||[]).map((w,i)=>'<div class="week" style="margin-bottom:8px"><b>Teden '+(i+1)+'</b>'+esc(w)+'</div>').join('')+'<button class="btn" data-go="trainings">Odpri treninge</button></div></div>'+selfSection(id,null));bindCommon();
 }
 function renderMyTrainings(){
   const monthSelection=trainingMonthSelection();
@@ -402,7 +402,7 @@ function renderPlayer(id){
   if(me.role==='player')return renderMyPlayer(myPlayerId());
   let p=player(id);if(!p)return;const analysisMonth=window.playerAnalysisMonth||localToday().slice(0,7);let obs=data.observations.filter(x=>x.player_id===id),revs=data.reviews.filter(x=>x.player_id===id),recs=data.records.filter(x=>x.player_id===id);
   setContent('<div class="head"><div><button class="btn" data-back="players">← Igralke</button><h2>'+esc(p.full_name)+'</h2><div class="small muted">'+esc(club(p.club_id)?.name||'')+'</div>'+audit(p)+'</div><div class="toolbar">'+(canInternal()?'<button class="btn" id="editPlayer">Uredi cel profil</button>':'')+(canObserve()?'<button class="btn" id="newRecord">+ Nov zapis</button><button class="btn primary" id="newPlayerObs">+ Opažanje</button>':'')+'</div></div>'+
-  '<div class="grid g2"><div class="card"><h3>Aktualni IDP</h3>'+
+  developmentProfileHtml(p)+'<div class="grid g2"><div class="card"><h3>Aktualni IDP</h3>'+
   fieldBlock('Glavni IDP fokus',p.current_focus,'current_focus')+fieldBlock('Naslednji mikro fokus',p.next_micro_focus,'next_micro_focus')+fieldBlock('Coaching cue',p.coaching_cue,'coaching_cue')+
   '<div style="margin-top:12px"><div class="tiny muted">IDP SKUPINE '+(canInternal()?'<button class="edit" data-qedit="primary_groups">✎</button>':'')+'</div><div class="chips">'+chips(p.primary_groups)+'</div></div></div>'+
   '<div class="card"><h3>4-tedenski fokus</h3><div class="weekgrid">'+(p.four_week_plan||[]).map((w,i)=>'<div class="week"><b>TEDEN '+(i+1)+'</b><div class="small">'+esc(w)+'</div></div>').join('')+'</div></div></div>'+
@@ -419,6 +419,40 @@ function renderPlayer(id){
   $$('[data-qedit]').forEach(b=>b.onclick=()=>quickEdit(id,b.dataset.qedit));
 }
 function fieldBlock(label,val,field){return '<div style="margin-top:12px"><div class="tiny muted">'+label.toUpperCase()+' '+(canInternal()?'<button class="edit" data-qedit="'+field+'">✎</button>':'')+'</div><div class="small">'+esc(val||'—')+'</div></div>'}
+
+const developmentFields=[['summary','Kakšna igralka je'],['strengths','Njene glavne moči'],['potential','Igralni potencial'],['limiting_factor','Ključne razvojne rezerve'],['development_priorities','Širša razvojna področja'],['expected_behaviors','Kaj želimo videti v igri'],['learning_logic','Kako jo razvijamo'],['key_message','Ključno sporočilo igralki']];
+function safeProfileUrl(value){try{const u=new URL(value);return u.protocol==='https:'?u.href:''}catch{return ''}}
+function developmentProfileHtml(p){
+  const d=p.development_profile||{},status={baseline:'Izhodišče iz gradiva',confirmed:'Strokovno potrjeno',review:'Za pregled'}[d.status]||'Za dopolnitev';
+  const fields={...d,strengths:d.strengths||p.strengths,limiting_factor:d.limiting_factor||p.development_reserve};
+  return '<section class="card" style="margin-bottom:16px;border-top:4px solid var(--purple,#7250a0)"><div class="row between wrap"><div><div class="tiny muted">CELOTNA SLIKA IGRALKE</div><h2>Razvojni profil igralke</h2></div><div class="row wrap"><span class="chip">'+esc(status)+'</span>'+(canInternal()?'<button class="btn" data-development-edit="'+esc(p.id)+'">Uredi razvojni profil</button>':'')+'</div></div><p class="small muted">Razvojno izhodišče in dolgoročnejša usmeritev. Aktualni IDP dogovor ter datirana opažanja so prikazani spodaj.</p><div class="grid g2">'+developmentFields.map(([key,label])=>'<div class="review-section"><b class="small">'+esc(label)+'</b><div class="small analysis-text" style="margin-top:5px">'+esc(fields[key]||'Za dopolnitev')+'</div></div>').join('')+'</div>'+
+  '<div class="review-section"><b class="small">Aktualni fokus in skupine iz profila</b><div class="small analysis-text">'+esc(p.current_focus||'Aktualni fokus še ni določen.')+'</div><div class="chips">'+(p.primary_groups||[]).map(g=>'<span class="chip">'+esc(g+' · '+idpGroupNames[g])+'</span>').join('')+((p.secondary_groups||[]).length?'<div class="tiny muted">Podporne skupine: '+esc(p.secondary_groups.join(', '))+'</div>':'')+'</div>'+
+  (d.details_text?'<details class="review-section"><summary class="small">Podrobna razvojna vsebina iz izhodiščnega gradiva</summary><div class="small analysis-text" style="margin-top:10px">'+esc(d.details_text)+'</div></details>':'')+
+  '<div class="small muted" style="border-top:1px solid var(--line);padding-top:12px">'+esc(d.source_note||'Vir: obstoječi podatki profila. Celotno razvojno izhodišče še ni vneseno.')+'<div class="tiny">Zadnji strokovni pregled: '+esc(d.reviewed_on?dsl(d.reviewed_on):'še ni potrjen')+(d.imported_on?' · Vsebina prenesena: '+esc(dsl(d.imported_on)):'')+'</div></div>'+
+  ((d.sources||[]).length?'<div class="row wrap" style="margin-top:10px">'+d.sources.map(src=>{const url=safeProfileUrl(src.url);return url?'<a class="btn" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(src.title||'Odpri izvirno gradivo')+' ↗</a>':'<span class="small muted">'+esc(src.title||'Vir brez povezave')+'</span>'}).join('')+'</div>':'')+'</section>';
+}
+function openDevelopmentProfile(pid){
+  if(!canInternal())return;
+  const p=player(pid);if(!p)return;
+  if(!$('#developmentModal'))document.body.insertAdjacentHTML('beforeend','<div class="modal" id="developmentModal"><div class="modalbox"><div class="row between"><h3>Razvojni profil igralke</h3><button class="x" type="button" id="developmentClose">×</button></div><form class="form" id="developmentForm"><input type="hidden" name="player_id"><input type="hidden" name="revision">'+developmentFields.map(([key,label])=>'<div class="field full"><label for="development-'+key+'">'+esc(label)+'</label><textarea id="development-'+key+'" name="'+key+'"></textarea></div>').join('')+'<div class="field full"><label>Podrobna razvojna vsebina</label><textarea name="details_text" rows="7"></textarea></div><div class="field full"><label>Vir in obdobje izhodišča</label><textarea name="source_note"></textarea></div><div class="field full"><label>Izvirna gradiva (ena vrstica: naziv | povezava HTTPS)</label><textarea name="sources"></textarea></div><div class="field"><label>Status</label><select name="status"><option value="review">Za pregled</option><option value="baseline">Izhodišče iz gradiva</option><option value="confirmed">Strokovno potrjeno</option></select></div><div class="field"><label>Datum strokovnega pregleda</label><input type="date" name="reviewed_on"></div><p class="small muted full">Urejaš razvojno izhodišče. Aktualni fokus uredi v razdelku Aktualni IDP; zgodovinska opažanja in ocene ostanejo vezani na svoje treninge.</p><div id="developmentError" class="msg bad hidden full" role="alert"></div><div class="full row" style="justify-content:flex-end"><button class="btn primary" type="submit">Shrani razvojni profil</button></div></form></div></div>');
+  const f=$('#developmentForm'),d=p.development_profile||{};f.reset();f.elements.player_id.value=pid;f.elements.revision.value=p.updated_at;
+  for(const [key] of developmentFields)f.elements[key].value=d[key]||(key==='strengths'?p.strengths:key==='limiting_factor'?p.development_reserve:'')||'';
+  for(const key of ['details_text','source_note','reviewed_on'])f.elements[key].value=d[key]||'';
+  f.elements.sources.value=(d.sources||[]).map(x=>(x.title||'Gradivo')+' | '+(x.url||'')).join('\n');f.elements.status.value=d.status||'review';$('#developmentError').classList.add('hidden');
+  $('#developmentClose').onclick=()=>closeM($('#developmentClose'));f.onsubmit=saveDevelopmentProfile;openM('developmentModal');
+}
+async function saveDevelopmentProfile(event){
+  event.preventDefault();if(!canInternal())return;
+  const f=event.target,p=player(f.elements.player_id.value),button=f.querySelector('[type=submit]'),errorBox=$('#developmentError');button.disabled=true;errorBox.classList.add('hidden');
+  try{
+    const d={...(p.development_profile||{})};for(const [key] of developmentFields)d[key]=f.elements[key].value.trim();
+    for(const key of ['details_text','source_note','reviewed_on','status'])d[key]=f.elements[key].value.trim();
+    if(d.status==='confirmed'&&!d.reviewed_on)throw new Error('Za potrjen profil vnesi datum strokovnega pregleda.');
+    d.sources=f.elements.sources.value.split('\n').filter(x=>x.trim()).map(line=>{const split=line.indexOf('|');const title=(split<0?line:line.slice(0,split)).trim(),value=split<0?'':line.slice(split+1).trim();if(value&&!safeProfileUrl(value))throw new Error('Povezava do gradiva mora biti veljaven naslov HTTPS.');return {title,url:value}});
+    const result=await sb.from('players').update({development_profile:d}).eq('id',p.id).eq('updated_at',f.elements.revision.value).select('id').maybeSingle();if(result.error)throw result.error;if(!result.data)throw new Error('Profil je bil medtem spremenjen. Zapri okno, osveži podatke in ponovno odpri urejanje.');
+    closeM($('#developmentClose'));await loadAll(false);
+  }catch(error){errorBox.textContent=error.message;errorBox.classList.remove('hidden')}finally{button.disabled=false}
+}
 
 
 function trainingMonthSelection(){
@@ -766,6 +800,7 @@ function renderUsers(){
 }
 
 function bindCommon(){
+  $$('[data-development-edit]').forEach(b=>b.onclick=()=>openDevelopmentProfile(b.dataset.developmentEdit));
   $$('[data-self-new]').forEach(b=>b.onclick=()=>openSelf(b.dataset.selfNew||null));
   $$('[data-self-edit]').forEach(b=>b.onclick=()=>openSelf(null,b.dataset.selfEdit));
   $$('[data-delete-training]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();deleteTraining(b.dataset.deleteTraining,b)});
