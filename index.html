@@ -273,7 +273,7 @@ function monthlyAnalysis(pid,month){
   const qualitative=data.records.filter(r=>r.player_id===pid&&r.record_type==='IDP opažanje iz Driva'&&r.record_date?.startsWith(month)&&r.record_date<=today);
   const qualitativeEvidence=qualitative.map(r=>dsl(r.record_date)+' · '+(trainingMap.get(r.training_id)?.title||r.title)+'\n'+r.body).join('\n\n');
   const trainings=data.trainings.filter(t=>t.training_date.startsWith(month)&&t.training_date<=today);
-  const tracked=new Set([...obs.map(o=>o.training_id),...qualitative.map(r=>r.training_id).filter(Boolean)]),groups=new Map();
+  const tracked=new Set([...obs.map(o=>o.training_id),...qualitative.map(r=>r.training_id||'date:'+r.record_date)]),groups=new Map();
   for(const o of obs){const key=(o.idp_group||'')+'|'+(o.focus||'').trim().toLocaleLowerCase('sl');if(!groups.has(key))groups.set(key,[]);groups.get(key).push(o)}
   const progress=[],remaining=[];
   for(const items of groups.values()){
@@ -293,8 +293,8 @@ function monthlyAnalysis(pid,month){
   const lastNext=[...obs].reverse().find(o=>(o.next_micro_focus||'').trim());
   const lastTextNext=[...qualitative].sort((a,b)=>b.record_date.localeCompare(a.record_date)).find(r=>r.micro_focus);
   const useTextNext=lastTextNext&&(!lastNext||lastTextNext.record_date>=trainingMap.get(lastNext.training_id).training_date);
-  const goal=(useTextNext?lastTextNext.micro_focus:lastNext?.next_micro_focus)||p?.next_micro_focus||p?.current_focus||'';
-  return {obs,qualitative,trainings,tracked,progress:progress.join('\n')||(qualitative.length?'Vnesenih je '+qualitative.length+' besedilnih IDP opažanj. Njihovo vsebino in strokovno interpretacijo preberi v dokazih ter shranjenem mesečnem reviewu. Številčni trend ni na voljo.':'V tem mesecu še ni IDP opažanj. Napredka ni mogoče oceniti.'),remaining:remaining.join('\n')||(qualitative.length?'Preveri zapisane rezerve in naslednji mikro fokus v primerljivi situaciji. Strokovna interpretacija je v vmesnem mesečnem reviewu.':'Zberi konkreten primer vedenja glede na individualni fokus.'),evidence:(evidence||'Številčno ocenjenih opažanj še ni.')+(qualitativeEvidence?'\n\nBESEDILNA IDP OPAŽANJA IZ DRIVA:\n'+qualitativeEvidence:'')+(selfFeedbackText(pid,month)?'\n\nSAMOOCENA IGRALKE (ločeno od trenerkine ocene):\n'+selfFeedbackText(pid,month):''),goal,goalSource:useTextNext?'Strokovni predlog iz besedilnega spremljanja ('+dsl(lastTextNext.record_date)+')':lastNext?'Zadnji vneseni naslednji korak ('+dsl(trainingMap.get(lastNext.training_id).training_date)+')':'Obstoječi fokus iz profila',latest:[...obs,...qualitative].reduce((max,o)=>String(o.updated_at||o.created_at||'')>max?String(o.updated_at||o.created_at):max,'')};
+  const goal=p?.current_focus?('Aktualni glavni fokus: '+p.current_focus+'\n'+(p.next_micro_focus||'')):((useTextNext?lastTextNext.micro_focus:lastNext?.next_micro_focus)||'');
+  return {obs,qualitative,trainings,tracked,progress:progress.join('\n')||(qualitative.length?'Vnesenih je '+qualitative.length+' besedilnih IDP opažanj. Njihovo vsebino in strokovno interpretacijo preberi v dokazih ter shranjenem mesečnem reviewu. Številčni trend ni na voljo.':'V tem mesecu še ni IDP opažanj. Napredka ni mogoče oceniti.'),remaining:remaining.join('\n')||(qualitative.length?'Preveri zapisane rezerve in naslednji mikro fokus v primerljivi situaciji. Strokovna interpretacija je v vmesnem mesečnem reviewu.':'Zberi konkreten primer vedenja glede na individualni fokus.'),evidence:(evidence||'Številčno ocenjenih opažanj še ni.')+(qualitativeEvidence?'\n\nBESEDILNA IDP OPAŽANJA IZ DRIVA:\n'+qualitativeEvidence:'')+(selfFeedbackText(pid,month)?'\n\nSAMOOCENA IGRALKE (ločeno od trenerkine ocene):\n'+selfFeedbackText(pid,month):''),goal,goalSource:p?.current_focus?'Aktualni profil; pretekli fokusi ostanejo pri svojih opažanjih':useTextNext?'Strokovni predlog iz besedilnega spremljanja ('+dsl(lastTextNext.record_date)+')':lastNext?'Zadnji vneseni naslednji korak ('+dsl(trainingMap.get(lastNext.training_id).training_date)+')':'Obstoječi fokus iz profila',latest:[...obs,...qualitative].reduce((max,o)=>String(o.updated_at||o.created_at||'')>max?String(o.updated_at||o.created_at):max,'')};
 }
 function analysisCard(pid,month){
   const a=monthlyAnalysis(pid,month),r=data.reviews.find(r=>r.player_id===pid&&r.month.startsWith(month));
@@ -551,10 +551,10 @@ async function saveMonthlyReview(e){
   }finally{savingMonthlyReview=false;controls.forEach(([el,disabled])=>el.disabled=disabled)}
 }
 function reviewClean(value){
-  return String(value||'').replace(/^\[\/?SAMODEJNI POVZETEK IZ DRIVA[^\n]*\]\s*/gm,'').replace(/^Vmesni oktobrski pregled na podlagi zapisov do [^\n]+\n?/gm,'').trim();
+  return String(value||'').replace(/\\n/g,'\n').replace(/^\[\/?SAMODEJNI POVZETEK IZ DRIVA[^\n]*\]\s*/gm,'').replace(/^Vmesni oktobrski pregled na podlagi zapisov do [^\n]+\n?/gm,'').trim();
 }
 function reviewSourceParts(record){
-  const body=record.body||'',line=label=>{const row=body.split('\n').find(x=>x.startsWith(label));return row?row.slice(label.length).trim():''};
+  const body=String(record.body||'').replace(/\\n/g,'\n'),line=label=>{const row=body.split('\n').find(x=>x.startsWith(label));return row?row.slice(label.length).trim():''};
   const start=body.indexOf('Zapis po treningu (dobesedno iz vira):\n');
   const after=start<0?'':body.slice(start+'Zapis po treningu (dobesedno iz vira):\n'.length);
   const actual=after.split(/\n\n(?:Številčna|Delne ocene|Strokovni predlog)/)[0].trim();
@@ -579,7 +579,9 @@ function reviewModel(pid,month){
   const self=data.selfAssessments.filter(x=>x.player_id===pid&&x.session_date?.startsWith(month)&&x.session_date<=today).sort((x,y)=>x.session_date.localeCompare(y.session_date));
   const plans=data.records.filter(x=>x.player_id===pid&&x.record_type==='Načrt IDP iz Driva'&&x.record_date?.startsWith(month)).sort((x,y)=>x.record_date.localeCompare(y.record_date));
   const extra=data.records.filter(x=>x.player_id===pid&&x.record_date?.startsWith(month)&&x.record_date<=today&&!['IDP opažanje iz Driva','Načrt IDP iz Driva'].includes(x.record_type));
-  return {a,r,details,self,plans,extra,findings:remaining.replace(/\[PREVERJANJE\][\s\S]*?\[\/PREVERJANJE\]/g,'').trim(),check:checkMatch?.[1]?.trim()||proposedReviewCheck(details),progress:reviewClean(r?.progress),goal:reviewClean(r?.next_four_week_goal)};
+  const savedProgress=reviewClean(r?.progress);
+  const contradicted=details.length&&/(?:ni|brez|še ni).{0,45}(?:IDP spremljanja|IDP opažanj|poimenskega IDP)/i.test(savedProgress);
+  return {a,r,details,self,plans,extra,findings:remaining.replace(/\[PREVERJANJE\][\s\S]*?\[\/PREVERJANJE\]/g,'').trim(),check:checkMatch?.[1]?.trim()||proposedReviewCheck(details),progress:contradicted?a.progress:savedProgress,goal:reviewClean(r?.next_four_week_goal)};
 }
 function reviewText(value,empty){return '<div class="small analysis-text">'+esc(value||empty||'Ni vneseno.')+'</div>'}
 function reviewDetailHtml(pid,month){
@@ -588,11 +590,11 @@ function reviewDetailHtml(pid,month){
   const numeric=m.details.filter(d=>d.score!==null&&d.score!==undefined),pairs=m.details.map(d=>({d,values:[...new Set((d.raw||'').match(/\(\s*\d+(?:[,.]\d+)?\s*\/\s*(?:\d+(?:[,.]\d+)?)?\s*\)/g)||[])]})).filter(x=>x.values.length);
   const stale=m.r&&m.a.latest&&m.a.latest>String(m.r.updated_at||m.r.created_at||'');
   return '<div class="card" style="margin-top:14px"><div class="row between wrap"><div><h2>'+esc(p.full_name)+'</h2><div class="small muted">'+esc(monthName(month+'-01'))+' · '+(month===localToday().slice(0,7)?'Vmesni mesečni review':'Mesečni review')+'</div></div><span class="chip">'+m.a.tracked.size+' treningov z opažanji</span></div><p class="small muted">'+m.a.obs.length+' številčno ocenjenih in '+m.a.qualitative.length+' besedilnih spremljanj · '+m.self.length+' samoocen. Odsotnost zapisa ne pomeni ocene 0.</p>'+(stale?'<div class="msg">Opažanja so novejša od shranjene interpretacije. Dokazi spodaj so aktualni; trenerka naj pregleda povzetek in naslednji fokus.</div>':'')+(canInternal()?'<button class="btn" data-review-player="'+esc(pid)+'" data-review-month="'+esc(month)+'">Uredi strokovni review</button>':'')+'</div>'+
-    section(1,'Kaj smo opazovali',evidence||reviewText('Za ta mesec še ni poimenskega IDP spremljanja. Za konkreten review potrebujemo fokus, pričakovano in dejansko vedenje.'))+
+    section(1,'Kaj smo opazovali',activeFocusHtml(p)+ (evidence||reviewText('Za ta mesec še ni poimenskega IDP spremljanja. Za konkreten review potrebujemo fokus, pričakovano in dejansko vedenje.')))+
     section(2,'Kaj so opažanja pokazala',(m.progress?'<b class="small">Ugotovitve</b>'+reviewText(m.progress):reviewText(m.a.progress))+(m.findings?'<div style="margin-top:12px"><b class="small">Kaj ostaja odprto</b>'+reviewText(m.findings)+'</div>':'')+(m.progress&&m.a.obs.length?'<div class="review-section"><b class="small">Zabeležene ocene po fokusu</b>'+reviewText(m.a.progress)+'</div>':'')+'<p class="tiny muted">Razlaga temelji na zapisanih primerih. En trening ali višja ocena še ne potrdita trajnega napredka.</p>'+(m.extra.length?'<details><summary>Dodatni zapisi trenerke ('+m.extra.length+')</summary>'+m.extra.map(x=>'<h4>'+esc(dsl(x.record_date)+' · '+(x.title||x.record_type))+'</h4>'+reviewText(x.body)).join('')+'</details>':''))+
     inlineReviewVideo(pid,month,m.r?.evidence)+
     section(3,'Kaj preverjamo naprej',reviewText(m.check||(!m.details.length?'Najprej zberemo konkreten primer izvedbe glede na dogovorjeni fokus.':'Konkretna situacija in merilo preverjanja še nista zapisana. Pri naslednjem primerljivem treningu zabeleži signal, odločitev, izvedbo in ali je igralka potrebovala usmerjanje.'))+(m.plans.length?'<h4>Že zapisane naloge za naslednje treninge</h4><p class="tiny muted">To so načrti. Tudi po datumu treninga ostanejo načrti, dokler ne dobimo zapisa o izvedbi.</p>'+m.plans.map(x=>{const d=reviewSourceParts(x);return '<div class="review-section"><b class="small">'+esc(dsl(x.record_date)+' · '+x.title)+'</b>'+reviewText(d.focus)+'<b class="small">Kaj želimo videti</b>'+reviewText(d.expected)+'</div>'}).join(''):''))+
-    section(4,'Naslednji fokus glede na opažanja',reviewText(m.goal||(m.details.length?m.a.goal:''),'Naslednji fokus iz opažanj še ni določen.')+'<p class="tiny muted">Predlog postane dogovor po potrditvi trenerke in pogovoru z igralko. Načrt druge vsebine ne pomeni, da je prejšnji fokus osvojen.</p>'+'<details><summary class="small">Širši fokus iz profila</summary>'+reviewText(p.current_focus)+'</details>')+
+    section(4,'Naslednji fokus glede na opažanja',activeFocusHtml(p)+'<b class="small">Aktualni naslednji korak iz profila</b>'+reviewText(p.next_micro_focus)+'<b class="small">Zapis iz izbranega obdobja</b>'+reviewText(m.goal||(m.details.length?m.a.goal:''),'Naslednji fokus iz opažanj še ni določen.')+'<p class="tiny muted">Predlog postane dogovor po potrditvi trenerke in pogovoru z igralko. Načrt druge vsebine ne pomeni, da je prejšnji fokus osvojen.</p>'+'<details><summary class="small">Širši fokus iz profila</summary>'+reviewText(p.current_focus)+'</details>')+
     section(5,'Ocena trenerke',(numeric.length?numeric.map(d=>'<div class="review-section"><b class="small">'+esc(dsl(d.date)+' · '+d.focus)+'</b><div>'+score(d.score)+'</div>'+reviewText(d.actual,'Opis izvedbe ob oceni ni vnesen.')+'</div>').join(''):reviewText('Enotna trenerkina ocena 0–2 za ta mesec ni vpisana.'))+'<p class="tiny muted">Lestvica aplikacije: 0 – vedenje ni vidno; 1 – ob usmerjanju; 2 – samostojno. Ocen različnih fokusov ne združujemo v izmišljeno mesečno oceno.</p>'+(pairs.length?'<h4>Izvorni pari oziroma delne ocene iz Driva</h4>'+pairs.map(({d,values})=>'<p class="small"><b>'+esc(dsl(d.date))+':</b> '+esc(values.join(' · '))+'</p>').join('')+'<p class="small muted">Pomen leve in desne številke še ni potrjen. Celoten zapis z merili je v 1. razdelku; teh vrednosti ne pripisujemo trenerki ali igralki.</p>':''))+
     section(6,'Samoocena igralke',m.self.length?m.self.map(x=>'<article class="review-section"><b class="small">'+esc(dsl(x.session_date)+' · '+x.focus)+'</b><div class="small">Področje: '+esc(x.area||'ni vneseno')+' · Samoocena: '+esc(x.self_score??'ni vnesena')+'</div><b class="small">Njen konkretni primer</b>'+reviewText(x.example)+'<b class="small">Njen naslednji korak</b>'+reviewText(x.next_goal)+'</article>').join(''):reviewText('Igralka za ta mesec še ni oddala samoocene. Trenerkinega zapisa ne predstavljamo kot njen odgovor.'))+
     (m.r?.player_feedback&&m.r.player_feedback!=='še ni prejet'?'<section class="card" style="margin-top:14px"><h3>Zapisani feedback igralke</h3>'+reviewText(m.r.player_feedback)+'</section>':'')+
@@ -776,11 +778,47 @@ function bindCommon(){
 
 function fillClub(sel,val){sel.innerHTML='<option value="">—</option>'+data.clubs.map(c=>'<option value="'+c.id+'" '+(c.id===val?'selected':'')+'>'+esc(c.name)+'</option>').join('')}
 function arr(s){return [...new Set((s||'').split(',').map(x=>x.trim().toUpperCase()).filter(x=>['A','B','C','D','E'].includes(x)))]}
+const idpGroupNames={A:'Tehnika v funkciji igre',B:'Prostor, pozicioniranje in gibanje brez žoge',C:'Odločanje, razumevanje igre in pritisk',D:'1v1, duel in tranzicija',E:'Telesne sposobnosti, mentaliteta in odgovornost'};
+function focusGroups(focus){
+  const s=String(focus||'').toLocaleLowerCase('sl');
+  return Object.entries({A:/dotik|sprejem|podaj|udar[ce]/,B:/prostor|pozicion|gibanje brez/,C:/odlo[čc]|skenir|informacij|razumevanje/,D:/1\s*[v:]\s*[12]|duel|tranzicij|po izgubi/,E:/telesn|mo[čc]|hitrost|samozavest|odgovornost/}).filter(([,re])=>re.test(s)).map(([g])=>g);
+}
+function focusProposal(focus){
+  const defensive=/1\s*[v:]\s*[12].*(?:obramb|branjen)|(?:obramb|branjen).*1\s*[v:]\s*[12]/i.test(focus||'');
+  const micro=defensive?'Branjenje 1v1: razdalja in pristop start–stop, usmerjanje iz nevarnega prostora ter pravočasen odvzem. V 1v2 ločeno preveri zaščito prostora in trenutek za izolacijo ene napadalke.':'Pri fokusu »'+focus+'« opredeli signal, odločitev in izvedbo ter preveri samostojno uporabo v primerljivi igralni situaciji.';
+  const cue=defensive?'Zaščiti nevaren prostor. Prilagodi razdaljo. Usmeri. Odvzemi ob pravem trenutku.':'Prepoznaj situacijo. Izberi rešitev. Izvedi in nadaljuj akcijo.';
+  return {groups:focusGroups(focus),micro:'Predlog: '+micro,cue:'Predlog: '+cue,plan:[
+    'Predlog · fokus: '+focus+'. Zabeleži začetni primer vedenja, odločitev in učinek.',
+    'Predlog · '+micro+' Loči izvedbo brez opozorila od izvedbe po usmerjanju.',
+    'Predlog · isti fokus preveri v situacijski igri z aktivno nasprotnico in drugačnim pritiskom.',
+    'Predlog · primerjaj ponovljene primere istega fokusa; skupaj z igralko izberi nadaljnji korak.'
+  ]};
+}
+function focusBlock(value){return '[AKTUALNI IDP – PREDLOG]\n'+value+'\n[/AKTUALNI IDP – PREDLOG]'}
+function withFocusBlock(original,value){
+  const manual=String(original||'').replace(/\[AKTUALNI IDP – PREDLOG\][\s\S]*?\[\/AKTUALNI IDP – PREDLOG\]/g,'').trim();
+  return focusBlock(value)+(manual?'\n\nPrejšnji oziroma ročni zapis – preveri skladnost z novim fokusom:\n'+manual.replace(/^Prejšnji oziroma ročni zapis – preveri skladnost z novim fokusom:\s*/,''):'');
+}
+function linkedFocusUpdate(previous,changes){
+  if(!previous||!Object.hasOwn(changes,'current_focus')||changes.current_focus.trim()===(previous.current_focus||'').trim())return changes;
+  const suggestion=focusProposal(changes.current_focus),out={...changes};
+  out.primary_groups=[...new Set([...(changes.primary_groups||previous.primary_groups||[]),...suggestion.groups])];
+  out.secondary_groups=(changes.secondary_groups||previous.secondary_groups||[]).filter(g=>!out.primary_groups.includes(g));
+  for(const [field,value] of [['next_micro_focus',suggestion.micro],['coaching_cue',suggestion.cue]]){
+    if(!Object.hasOwn(changes,field)||changes[field]===previous[field])out[field]=withFocusBlock(previous[field],value);
+  }
+  if(!Object.hasOwn(changes,'four_week_plan')||JSON.stringify(changes.four_week_plan)===JSON.stringify(previous.four_week_plan))out.four_week_plan=suggestion.plan.map((v,i)=>withFocusBlock(previous.four_week_plan?.[i],v));
+  return out;
+}
+function activeFocusHtml(p){
+  if(!p?.current_focus)return '';
+  return '<div class="review-section"><b class="small">Aktualni glavni IDP fokus</b><div class="small analysis-text">'+esc(p.current_focus)+'</div><div class="chips">'+(p.primary_groups||[]).map(g=>'<span class="chip">'+esc(g+' · '+idpGroupNames[g])+'</span>').join('')+'</div><p class="tiny muted">Aktualna usmeritev profila. Spodnja opažanja in ocene ohranijo fokus in skupino, ki sta veljala ob spremljanju.</p></div>';
+}
 function openPlayer(id){
   let f=$('#playerForm'),p=id?player(id):null;f.reset();f.id.value=id||'';f.full_name.value=p?.full_name||'';fillClub(f.club_id,p?.club_id);f.current_focus.value=p?.current_focus||'';f.next_micro_focus.value=p?.next_micro_focus||'';f.coaching_cue.value=p?.coaching_cue||'';f.primary_groups.value=(p?.primary_groups||[]).join(', ');f.secondary_groups.value=(p?.secondary_groups||[]).join(', ');f.strengths.value=p?.strengths||'';f.development_reserve.value=p?.development_reserve||'';let w=p?.four_week_plan||[];f.w1.value=w[0]||'';f.w2.value=w[1]||'';f.w3.value=w[2]||'';f.w4.value=w[3]||'';openM('playerModal');
 }
-$('#playerForm').onsubmit=async e=>{e.preventDefault();let f=e.target,id=f.id.value,obj={full_name:f.full_name.value,club_id:f.club_id.value||null,current_focus:f.current_focus.value,next_micro_focus:f.next_micro_focus.value,coaching_cue:f.coaching_cue.value,primary_groups:arr(f.primary_groups.value),secondary_groups:arr(f.secondary_groups.value),strengths:f.strengths.value,development_reserve:f.development_reserve.value,four_week_plan:[f.w1.value,f.w2.value,f.w3.value,f.w4.value]};let q=id?sb.from('players').update(obj).eq('id',id).select().single():sb.from('players').insert(obj).select().single();let {data:r,error}=await q;if(error)return alert(error.message);closeM($('#playerModal .x'));await loadAll(false);selectedPlayer=r.id;renderPlayer(r.id)};
-async function quickEdit(id,field){let p=player(id),v=field==='primary_groups'?(p.primary_groups||[]).join(', '):(p[field]||''),n=prompt('Uredi:',v);if(n===null)return;let obj={};obj[field]=field==='primary_groups'?arr(n):n;let {error}=await sb.from('players').update(obj).eq('id',id);if(error)alert(error.message);else{await loadAll(false);selectedPlayer=id;renderPlayer(id)}}
+$('#playerForm').onsubmit=async e=>{e.preventDefault();let f=e.target,id=f.id.value,obj={full_name:f.full_name.value,club_id:f.club_id.value||null,current_focus:f.current_focus.value,next_micro_focus:f.next_micro_focus.value,coaching_cue:f.coaching_cue.value,primary_groups:arr(f.primary_groups.value),secondary_groups:arr(f.secondary_groups.value),strengths:f.strengths.value,development_reserve:f.development_reserve.value,four_week_plan:[f.w1.value,f.w2.value,f.w3.value,f.w4.value]};obj=linkedFocusUpdate(id?player(id):null,obj);let q=id?sb.from('players').update(obj).eq('id',id).eq('updated_at',player(id).updated_at).select().single():sb.from('players').insert(obj).select().single();let {data:r,error}=await q;if(error)return alert(error.message);closeM($('#playerModal .x'));await loadAll(false);selectedPlayer=r.id;renderPlayer(r.id)};
+async function quickEdit(id,field){let p=player(id),v=field==='primary_groups'?(p.primary_groups||[]).join(', '):(p[field]||''),n=prompt('Uredi:',v);if(n===null)return;let obj={};obj[field]=field==='primary_groups'?arr(n):n;obj=linkedFocusUpdate(p,obj);let {data:saved,error}=await sb.from('players').update(obj).eq('id',id).eq('updated_at',p.updated_at).select('id').maybeSingle();if(error||!saved)alert(error?.message||'Profil medtem spremenjen. Osveži podatke in poskusi znova.');else{await loadAll(false);selectedPlayer=id;renderPlayer(id)}}
 
 async function deleteTraining(id,button){
   if(!canInternal()||deletingTraining)return;
@@ -818,7 +856,7 @@ async function openDoc(id){let d=data.documents.find(x=>x.id===id);if(!d)return;
 
 function fillPlayerSel(s,val){s.innerHTML=data.players.map(p=>'<option value="'+p.id+'" '+(p.id===val?'selected':'')+'>'+esc(p.full_name)+'</option>').join('')}
 function openObs(tid,pid,id){
-  let f=$('#obsForm'),o=id?data.observations.find(x=>x.id===id):null;f.reset();f.id.value=id||'';f.training_id.value=tid||o?.training_id||data.trainings[0]?.id||'';fillPlayerSel(f.player_id,pid||o?.player_id);f.idp_group.value=o?.idp_group||'A';f.focus.value=o?.focus||'';f.behavior.value=o?.behavior||'';f.score.value=o?.score??1;f.feedback_given.value=String(o?.feedback_given??false);f.note.value=o?.note||'';f.next_micro_focus.value=o?.next_micro_focus||'';openM('obsModal')
+  let f=$('#obsForm'),o=id?data.observations.find(x=>x.id===id):null;f.reset();f.id.value=id||'';f.training_id.value=tid||o?.training_id||data.trainings[0]?.id||'';fillPlayerSel(f.player_id,pid||o?.player_id);f.idp_group.value=o?.idp_group||player(f.player_id.value)?.primary_groups?.[0]||'A';f.focus.value=o?.focus||player(f.player_id.value)?.current_focus||'';f.behavior.value=o?.behavior||'';f.score.value=o?.score??1;f.feedback_given.value=String(o?.feedback_given??false);f.note.value=o?.note||'';f.next_micro_focus.value=o?.next_micro_focus||'';openM('obsModal')
 }
 $('#obsForm').onsubmit=async e=>{e.preventDefault();let f=e.target,id=f.id.value,obj={training_id:f.training_id.value,player_id:f.player_id.value,idp_group:f.idp_group.value,focus:f.focus.value,behavior:f.behavior.value,score:+f.score.value,feedback_given:f.feedback_given.value==='true',note:f.note.value,next_micro_focus:f.next_micro_focus.value};let q=id?sb.from('observations').update(obj).eq('id',id):sb.from('observations').insert(obj);let {error}=await q;if(error)return alert(error.message);closeM($('#obsModal .x'));await loadAll(false);selectedTraining=obj.training_id;renderTraining(obj.training_id)};
 
@@ -849,6 +887,7 @@ $('#reviewForm').onsubmit=saveMonthlyReview;
 const {data:{session:initial}}=await sb.auth.getSession();if(initial)await boot(initial);
 </script>
 </body></html>
+
 
 
 
